@@ -111,8 +111,10 @@ test('Retry-After: 秒数 / HTTP-date / 不正値', () => {
   const past = new Date(now - 5_000).toUTCString();
   assert.equal(parseRetryAfterMs(new Headers({ 'retry-after': past }), null, now), 0);
 
-  assert.equal(parseRetryAfterMs(new Headers({ 'retry-after': 'すぐ' }), null), undefined);
+  assert.equal(parseRetryAfterMs(new Headers({ 'retry-after': 'soon' }), null), undefined);
+  assert.equal(parseRetryAfterMs({ 'retry-after': 'すぐ' }, null), undefined, '非ASCIIでも落ちない');
   assert.equal(parseRetryAfterMs(new Headers({}), null), undefined);
+  assert.equal(parseRetryAfterMs({ 'x-other': '1' }, null), undefined, '該当ヘッダが無い場合');
   assert.equal(parseRetryAfterMs(null, null), undefined);
 });
 

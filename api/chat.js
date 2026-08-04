@@ -3,7 +3,7 @@
 // ここは HTTP の入り口だけを担当し、検証・呼び出し・解析は api/_lib/ 側に置いてある。
 // createHandler() で env と fetch を注入できるので、ハンドラ単位でテストできる（tests/handler.test.js）。
 
-import { apiError, isApiError, redactString, toErrorBody } from './_lib/errors.js';
+import { apiError, isApiError, redact, redactString, toErrorBody } from './_lib/errors.js';
 import { CLIENT_DEFAULTS, createGeminiClient, normalizeChatRequest, parseGeminiResponse } from './_lib/gemini.js';
 import { MAX_BODY_BYTES, createLogger, readJsonBody, resolveRequestId, sendJson, verifyEventPass } from './_lib/http.js';
 
@@ -138,7 +138,8 @@ export function createHandler(deps = {}) {
         model: normalized?.model,
         promptChars: normalized?.promptChars,
         durationMs: now() - startedAt,
-        details: err.details,
+        // 上流メッセージには鍵が混ざりうる。ログでも必ずマスクを通す。
+        details: redact(err.details, [apiKey]),
         // スタックは原因調査用。鍵が混ざる可能性を考えて必ずマスクを通す。
         stack: err.status >= 500 ? redactString(error?.stack ?? '', [apiKey]).slice(0, 1200) : undefined,
       });

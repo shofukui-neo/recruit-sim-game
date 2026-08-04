@@ -81,9 +81,23 @@ textarea,input{font-family:inherit}
 .intro .meta{font-size:12px;color:#7fd6a5;margin-bottom:16px;animation:slideUp .6s ease .55s both}
 
 .meeting{max-width:680px;margin:0 auto;height:100vh;display:flex;flex-direction:column;background:var(--bg)}
-.m-head{flex-shrink:0;background:#fff;border-bottom:1px solid #e9edef;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.m-head{flex-shrink:0;background:#fff;border-bottom:1px solid #e9edef;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .m-head .stg{font-weight:900;font-size:14px}
 .m-head .stg small{display:block;font-weight:700;color:var(--sub);font-size:11px}
+/* 選考フェーズのステッパー。横幅が足りない端末では横スクロールさせる */
+.phasebar{flex-basis:100%;order:3;display:flex;align-items:center;gap:4px;margin-top:7px;overflow-x:auto;padding-bottom:2px}
+.phasebar .ph{display:flex;align-items:center;gap:3px;font-size:10px;font-weight:800;color:#a8b4ba;white-space:nowrap;padding:3px 9px;border-radius:999px;background:#f1f4f6;transition:.3s}
+.phasebar .ph i{font-style:normal;font-size:11px}
+.phasebar .ph.done{color:#0b7a45;background:#e7f8ee}
+.phasebar .ph.now{color:#fff;background:var(--green);box-shadow:0 2px 8px rgba(6,199,85,.35)}
+.phasebar .pharrow{color:#cfd8dc;font-weight:900;font-size:12px;flex-shrink:0}
+.chbadge{display:inline-block;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px;background:#eef1f3;color:#5a6a72;margin-right:6px}
+.is-line .chbadge{background:var(--green);color:#fff}
+.is-line .composer{background:#f6fbf8}
+.es-card{background:var(--paper);border:1px solid #ece5d8;border-radius:12px;padding:10px 12px}
+.es-q{font-size:10px;font-weight:900;color:#a08a5b;margin-top:9px}
+.es-card .es-q:first-child{margin-top:0}
+.es-a{font-size:12.5px;line-height:1.65;margin-top:2px}
 .pips{display:flex;gap:10px;align-items:center}
 .pipgroup{display:flex;gap:3px;align-items:center}
 .pipgroup .lbl{font-size:9px;color:var(--sub);font-weight:800;margin-right:2px}
@@ -223,10 +237,22 @@ const CFG = {
 };
 const TPS = 2;
 const NAME_MAX = 12;
+// AI呼び出しの最大試行回数（初回 + 再試行2回）。サーバー側でも再試行するので、ここは控えめに。
+const MAX_AI_ATTEMPTS = 3;
+// 1ターンでAI待ちに費やしてよい上限。制限時間180秒のゲーム進行を止めないための保険。
+const AI_BUDGET_MS = 60000;
 
 const PERSONA = {
   public:{ name:'佐藤 みなと', university:'私立大学 経済学部（文系）', grade:'学部4年',
     industries:'人材 / IT / 広告 など幅広く', axis:'若いうちから成長できる環境・人の役に立つ実感' },
+  // エントリーシート。説明会当日に提出済みで、プレイヤーは最初から読める。
+  // ここに書かれた固有名詞に触れられるかどうかが「パーソナライズ度」の判定材料になる。
+  es:{
+    motivation:'人の可能性を広げる仕事がしたいです。説明会で伺った「若手でも裁量が大きい」という点に強く惹かれました。',
+    gakuchika:'カフェのアルバイトで新人教育を担当しました。マニュアルが形骸化していたので作り直し、半年で新人の離職を3割減らしました。',
+    selfPR:'相手の話を最後まで聞いて、本当に困っていることを見つけるのが得意です。',
+    concern:'ベンチャーは成長できそうですが、忙しすぎて長く続けられないのではないかという不安があります。',
+  },
   private:{
     honne:'口では「成長」と言うが、実は安定も気にしている。親から「大手にしなさい」と言われ揺れやすい。詰められる環境は本当は怖い。',
     sasaru:['具体的なキャリアパスの提示','社員のリアルな失敗談・本音','自分の言葉で語る誠実さ','本人の意思決定を尊重する姿勢'],
@@ -244,26 +270,42 @@ const COMPANY = {
     { name:'スタートX', tag:'急成長スタートアップ', desc:'裁量最大・成長速いが激務で不安定。ハイリスク' },
   ],
 };
+// 選考フェーズ。ヘッダーに常時表示して「今どこにいるか」を見失わせない。
+const PHASES = [
+  { key:'brief',  label:'説明会',   icon:'📣' },
+  { key:'first',  label:'一次面接', icon:'🗣️' },
+  { key:'final',  label:'最終面接', icon:'🎯' },
+  { key:'offer',  label:'内定',     icon:'🎉' },
+];
+// 各ターンの ch は接触チャネル。'line' はテキストのみで勝負する場面で、
+// 対面と違って表情や間で補えないぶん、文面の質がそのまま評価に出る。
 const STAGES = [
   { id:1, title:'出会い・信頼づくり', sub:'序盤 — 関係構築',
     intro:'説明会で出会った佐藤さんは、まだあなたの会社を「候補のひとつ」としか見ていない。ここで信頼を勝ち取れなければ、後半で何を言っても届かない。まずは「この人になら本音を話せる」と思ってもらうことが全て。',
     turns:[
-      { label:'説明会後の初回接触', scene:'会社説明会の翌日。熱心にメモを取っていた佐藤さんとの初回面談。まだ志望度は高くない。' },
-      { label:'軸のヒアリングと動機づけ', scene:'就活で大事にしていることを聞き出しつつ、一次面接へ背中を押す場面。不安と期待が入り混じっている。' },
+      { label:'説明会後の初回LINE', phase:0, ch:'line',
+        scene:'会社説明会の翌日。熱心にメモを取っていた佐藤さんとLINEが繋がった。まだ志望度は高くない。最初の一通で印象が決まる。' },
+      { label:'軸のヒアリングと動機づけ', phase:0, ch:'meet',
+        scene:'就活で大事にしていることを聞き出しつつ、一次面接へ背中を押す場面。不安と期待が入り混じっている。' },
     ]},
   { id:2, title:'深耕・動機づけ', sub:'中盤 — 志望度を育てる',
     intro:'一次面接を通過し、距離は少し縮まった。しかしこのステージの終わりに、佐藤さんから「他社から内定が出た」という連絡が入る。それまでにどれだけ志望度を積み上げられているかが、後半の生死を分ける。',
     turns:[
-      { label:'一次面接後のフォロー', scene:'一次面接を通過。手応えはあったが少し不安そう。現場のリアルを見せて志望度を一段引き上げたい場面。' },
-      { label:'「他社から内定」の一報', scene:'「メガ・ホールディングスさんから内定をいただきました。正直迷っています」と打ち明けられた。' },
+      { label:'一次面接後のフォロー', phase:1, ch:'meet',
+        scene:'一次面接を通過。手応えはあったが少し不安そう。現場のリアルを見せて志望度を一段引き上げたい場面。' },
+      { label:'「他社から内定」の一報', phase:1, ch:'meet',
+        scene:'「メガ・ホールディングスさんから内定をいただきました。正直迷っています」と打ち明けられた。' },
     ]},
   { id:3, title:'意思決定・クロージング', sub:'終盤 — 決断の後押し',
     intro:'大手の内定を手にした佐藤さんは、大きく揺れている。ここで焦って囲い込めば一瞬で終わる。相手の迷いに正面から向き合い、最後は本人の意思で選んでもらえるか。残り2ターン、勝負の時。',
     turns:[
-      { label:'他社比較と最終面接', scene:'最大の山場。大手との間で揺れる気持ちに正面から向き合いつつ、最終面接へ進む意思を固めてもらう場面。' },
-      { label:'内定承諾のクロージング', scene:'最終面接を通過し、内定を提示。最後の意思決定を後押しするクロージング。' },
+      { label:'他社比較と最終面接', phase:2, ch:'meet',
+        scene:'最大の山場。大手との間で揺れる気持ちに正面から向き合いつつ、最終面接へ進む意思を固めてもらう場面。' },
+      { label:'内定承諾のクロージング', phase:3, ch:'meet',
+        scene:'最終面接を通過し、内定を提示。最後の意思決定を後押しするクロージング。' },
     ]},
 ];
+const curTurn = () => STAGES[S.stageIdx].turns[S.turnIdx];
 const TOTAL_TURNS = STAGES.length * TPS;
 const ACTIONS = ['面談を設定','社員を紹介','オフィス見学','食事に誘う','資料を送付','（発言のみ）'];
 const THRESHOLD = 75;
@@ -318,6 +360,49 @@ async function clearScores(){
   }catch(e){}
 }
 
+/* ============================================================
+   発言の質チェック
+   AIは放っておくと当たり障りのない一文にも加点しがちなので、
+   「挨拶だけ」「短すぎ」「使い回し」といった明らかな手抜きは
+   AIの判定を待たず、こちら側で加点の上限を被せる。
+   ここが「こんにちは だけで承諾ラインに近づく」のを止める最後の砦。
+   ============================================================ */
+const GREETING_ONLY_RE = /^(こんにちは|こんばんは|おはようございます|おはよう|はじめまして|お世話になります|お世話になっております|よろしくお願いします|よろしくお願いいたします|よろしく|ありがとうございます|ありがとう|お疲れ様です|了解です|了解|承知しました|はい|どうも)[\s。、,.!！?？…ー~〜]*$/;
+// 実質的な中身を測るため、挨拶・定型の相槌・丁寧語の語尾を除いた文字数を数える
+const FILLER_RE = /(こんにちは|こんばんは|おはようございます|はじめまして|お世話になっております|お世話になります|よろしくお願いいたします|よろしくお願いします|ありがとうございます|お疲れ様です|なるほど|そうですね|承知しました|了解です|ですね|でしょうか|ください|ます|です|した|さん|ぜひ|とても|本当に)/g;
+function contentLength(msg){
+  return String(msg||'').replace(FILLER_RE,'').replace(/[\s。、,.!！?？…・ー~〜「」『』（）()]/g,'').length;
+}
+function bigrams(s){
+  const t=String(s||'').replace(/\s+/g,'');
+  const out=new Set();
+  for(let i=0;i<t.length-1;i++) out.add(t.slice(i,i+2));
+  return out;
+}
+// 2文字単位のJaccard係数。言い回しを少し変えただけの使い回しを拾う
+function similarity(a,b){
+  const A=bigrams(a), B=bigrams(b);
+  if(!A.size||!B.size) return 0;
+  let inter=0; A.forEach(x=>{ if(B.has(x)) inter++; });
+  return inter/(A.size+B.size-inter);
+}
+// ESに書かれた固有の話題。ここに触れられるかが「ESを読んだ上での対応か」の目印
+const ES_HOOKS = ['カフェ','アルバイト','バイト','新人','教育','マニュアル','離職','裁量','可能性','忙し','続け','聞く','話を聞'];
+function esTouched(msg){ const m=String(msg||''); return ES_HOOKS.some(k=>m.includes(k)); }
+
+const QUALITY_CAPS = { '無言':-8, '中身がない':-6, '前と同じことの繰り返し':-5, '短すぎる':-3 };
+function analyzeMessage(msg){
+  const raw=String(msg||'').trim();
+  if(!raw) return { flags:['無言'], cap:QUALITY_CAPS['無言'], es:false };
+  const flags=[];
+  if(GREETING_ONLY_RE.test(raw) || contentLength(raw)<6) flags.push('中身がない');
+  else if(raw.length<15) flags.push('短すぎる');
+  const prev=S.history.map(h=>h.message).filter(m=>m && m!==TIMEOUT_MSG);
+  if(prev.some(m=>similarity(m,raw)>=0.6)) flags.push('前と同じことの繰り返し');
+  const cap = flags.length ? Math.min(...flags.map(f=>QUALITY_CAPS[f])) : null;
+  return { flags, cap, es:esTouched(raw) };
+}
+
 function buildPrompt(msg, action, timedOut){
   const st=STAGES[S.stageIdx], t=st.turns[S.turnIdx], p=PERSONA.public, pv=PERSONA.private, c=COMPANY;
   const hist = S.history.length
@@ -325,27 +410,79 @@ function buildPrompt(msg, action, timedOut){
     : '（まだ会話なし）';
   const timeoutBlock = timedOut ? `\n# ★重要：時間切れ（放置）\nプレイヤーは制限時間内に何も声をかけられませんでした。\n学生の側から見ると「連絡が来ないまま時間だけが過ぎた」状態です。\nこれは学生の地雷「返信の放置・遅さ」に該当します。\n放置された学生として、戸惑い・不信・気持ちの冷えを反映した反応を返し、deltaは必ずマイナス（-8〜-18程度）にしてください。\nkindは "jirai" とし、ngに「返信の放置・遅さ」を含めてください。\n` : '';
 
-  return `あなたは新卒採用のコミュニケーション体験ゲームのAIエンジンです。\n下記の「学生ペルソナ」になりきって面談での発言を返し、同時に人事担当者（プレイヤー）の発言を評価します。\n\n# 学生ペルソナ\n## 公開情報（プレイヤーも見ている）\n- 氏名: ${p.name} / ${p.university} / ${p.grade}\n- 志望業界: ${p.industries}\n- 就活の軸: ${p.axis}\n## 非公開の内面（あなただけが知る。決して口に出さない）\n- 本音: ${pv.honne}\n- 刺さるポイント: ${pv.sasaru.join(' / ')}\n- 地雷（踏まれると一気に冷める）: ${pv.jirai.join(' / ')}\n- 性格: ${pv.personality}\n- 重視条件の優先度: ${pv.priority}\n\n# 企業情報\n## 自社（プレイヤーの会社）\n${c.self.name} / ${c.self.business} / ${c.self.scale} / ${c.self.treat} / 社風: ${c.self.culture} / 選考: ${c.self.flow}\n## 競合\n${c.rivals.map(r=>`${r.name}（${r.tag}）: ${r.desc}`).join('\n')}\n\n# 現在の状況\n- Stage ${st.id}/${STAGES.length}「${st.title}」 ターン ${S.turnIdx+1}/${TPS}: ${t.label}\n- 場面: ${t.scene}\n- 全${TOTAL_TURNS}ターン中の${S.stageIdx*TPS+S.turnIdx+1}ターン目\n- 現在の志望度: ${S.score}/100（内部値。会話で数値に言及することは絶対に禁止）\n\n# これまでの面談\n${hist}\n\n# 今回のプレイヤーの発言\n- 発言: ${msg || '（なし）'}\n- アクション: ${action || '（発言のみ）'}\n${timeoutBlock}\n# タスク\n1. 対面の面談での発言として、就活生らしく自然に返す（口語で1〜3文。作り込みすぎない）\n   - 刺さる対応には心を開き気味に、地雷を踏まれたら素っ気なく／戸惑い気味に\n   - 会話履歴・場面・内面と一貫させること\n2. ト書き(togaki): そのときの表情・仕草を「（〜した）」の形で1つ。会話文は入れない\n3. 評価して志望度の変動値(delta)を決める\n   - 評価軸: 就活の軸との整合 / パーソナライズ度（テンプレ感がないか） / 場面への適切さ / NG行動（圧迫・急かし・放置・過度な囲い込み・嘘）\n   - 目安: 素晴らしい +10〜+18 / 良い +4〜+9 / 可もなく不可もなく -2〜+3 / 微妙 -8〜-3 / NG行動 -22〜-9\n   - ※全${TOTAL_TURNS}ターンで承諾ライン${THRESHOLD}点に届きうる幅で採点すること\n4. kind: "sasaru"(刺さった) / "good"(手応えあり) / "flat"(ふつう) / "miss"(響かなかった) / "jirai"(地雷を踏んだ) のいずれか1つ\n\n# 出力\n下記JSONオブジェクトのみを出力。前後に説明文やコードブロック記法を一切付けないこと。\n{"reply":"学生の発言","togaki":"（表情や仕草）","delta":整数,"kind":"sasaru|good|flat|miss|jirai","reason":"スコアが動いた理由。結果発表のフィードバック用に簡潔に（60字程度）","inner":"この瞬間の学生の本音。結果発表で開示（1文）","ng":["該当するNG行動。無ければ空配列"]}\n\n## 出力の厳守ルール（JSONが壊れると処理できないため必ず守ること）\n- 文字列の中でダブルクォート(")を絶対に使わない。強調や引用は「」を使う\n- 文字列の中で改行しない。1行で書く\n- deltaは符号の+を付けない。マイナスのみ-を付ける（例: 8 / -12）\n- 全体を1行のJSONで出力する`;
+  const es = PERSONA.es;
+  const ph = PHASES[t.phase];
+  const isLine = t.ch === 'line';
+  const chBlock = isLine
+    ? `- 接触チャネル: LINE（テキストのみのやり取り）\n  ※表情や間で補えないため、文面そのものの質が全てです。宛名・具体性・長さ・気遣いの有無がそのまま印象になります。\n  ※学生の返信もLINEらしい短いメッセージにすること（1〜2文。絵文字を使うなら1つまで）。`
+    : `- 接触チャネル: 対面（面談）\n  ※学生の返信は対面での話し言葉にすること（1〜3文）。`;
+  // 手抜き入力を検出したら、学生の反応そのものを変えさせる。
+  // これが無いと「こんにちは」に対して「理解が深まりました」と返してしまう。
+  const q = analyzeMessage(msg);
+  const qualityBlock = (!timedOut && q.flags.length) ? `\n# ★重要：今回の発言は質に問題があります\n検出された問題: ${q.flags.join(' / ')}\n人事担当者としては手抜きの対応です。学生は「ちゃんと見てもらえていない」「テンプレ対応だ」と感じます。\n- 「理解が深まりました」「参考になりました」のような前向きな返答を絶対に返さないこと。戸惑い・素っ気なさ・当たり障りのない社交辞令にとどめること。\n- deltaは必ずマイナスにすること。kindは "miss" または "jirai" にすること。\n` : '';
+
+  return `あなたは新卒採用のコミュニケーション体験ゲームのAIエンジンです。\n下記の「学生ペルソナ」になりきって面談での発言を返し、同時に人事担当者（プレイヤー）の発言を評価します。\n\n# 学生ペルソナ\n## 公開情報（プレイヤーも見ている）\n- 氏名: ${p.name} / ${p.university} / ${p.grade}\n- 志望業界: ${p.industries}\n- 就活の軸: ${p.axis}\n## エントリーシート（説明会当日に提出済み。プレイヤーも読める）\n- 志望動機: ${es.motivation}\n- 学生時代に力を入れたこと: ${es.gakuchika}\n- 自己PR: ${es.selfPR}\n- 不安に思っていること: ${es.concern}\n## 非公開の内面（あなただけが知る。決して口に出さない）\n- 本音: ${pv.honne}\n- 刺さるポイント: ${pv.sasaru.join(' / ')}\n- 地雷（踏まれると一気に冷める）: ${pv.jirai.join(' / ')}\n- 性格: ${pv.personality}\n- 重視条件の優先度: ${pv.priority}\n\n# 企業情報\n## 自社（プレイヤーの会社）\n${c.self.name} / ${c.self.business} / ${c.self.scale} / ${c.self.treat} / 社風: ${c.self.culture} / 選考: ${c.self.flow}\n## 競合\n${c.rivals.map(r=>`${r.name}（${r.tag}）: ${r.desc}`).join('\n')}\n\n# 現在の状況\n- 選考フェーズ: ${ph.label}（${c.self.flow}）\n- Stage ${st.id}/${STAGES.length}「${st.title}」 ターン ${S.turnIdx+1}/${TPS}: ${t.label}\n- 場面: ${t.scene}\n${chBlock}\n- 全${TOTAL_TURNS}ターン中の${S.stageIdx*TPS+S.turnIdx+1}ターン目\n- 現在の志望度: ${S.score}/100（内部値。会話で数値に言及することは絶対に禁止）\n\n# これまでのやり取り\n${hist}\n\n# 今回のプレイヤーの発言\n- 発言: ${msg || '（なし）'}\n- アクション: ${action || '（発言のみ）'}\n${timeoutBlock}${qualityBlock}\n# タスク\n1. ${isLine?'LINEの返信':'対面での発言'}として、就活生らしく自然に返す（作り込みすぎない）\n   - 刺さる対応には心を開き気味に、地雷を踏まれたら素っ気なく／戸惑い気味に\n   - ★中身のない声かけに「理解が深まりました」「勉強になりました」と返してはいけない。実際に何かが伝わったときだけ前向きに反応すること\n   - 会話履歴・場面・内面と一貫させること\n2. ト書き(togaki): そのときの表情・仕草を「（〜した）」の形で1つ。会話文は入れない\n3. 評価して志望度の変動値(delta)を決める。★採点は辛口で行うこと\n   - 評価軸（重要な順）\n     a. ESの中身に具体的に踏み込めているか。カフェでの新人教育・マニュアル改訂・離職を3割減らした話・「忙しすぎて続かないのでは」という不安など、ESに書かれた固有の話題に触れず一般論で済ませた場合は加点しない\n     b. 就活の軸「${p.axis}」との整合、および本人の不安への手当て\n     c. パーソナライズ度。佐藤さん以外の誰に送っても成立する文面はテンプレとみなして減点\n     d. 場面と接触チャネルへの適切さ\n     e. NG行動（圧迫・急かし・放置・過度な囲い込み・嘘）\n   - 目安\n     素晴らしい（ESや軸に具体的に踏み込み、相手の不安に手当てできた）: +10〜+16\n     良い（具体性があり誠実。あと一歩）: +4〜+9\n     無難（間違ってはいないが誰にでも言える一般論）: -4〜0\n     薄い（短い・中身がない・同じことの繰り返し・誤字や敬語の乱れが目立つ）: -12〜-5\n     NG行動: -25〜-13\n   - ★「無難」の上限は0です。当たり障りのない対応にプラスを付けてはいけません\n   - 誤字脱字・敬語の乱れ・宛名や主語の欠落が目立つ場合は、内容が良くても2〜5点差し引くこと\n   - ※全${TOTAL_TURNS}ターンで承諾ライン${THRESHOLD}点に届きうる幅は確保すること（丁寧に作り込めば+10以上を出してよい）\n4. kind: "sasaru"(刺さった) / "good"(手応えあり) / "flat"(ふつう) / "miss"(響かなかった) / "jirai"(地雷を踏んだ) のいずれか1つ\n\n# 出力\n下記JSONオブジェクトのみを出力。前後に説明文やコードブロック記法を一切付けないこと。\n{"reply":"学生の発言","togaki":"（表情や仕草）","delta":整数,"kind":"sasaru|good|flat|miss|jirai","reason":"スコアが動いた理由。結果発表のフィードバック用に簡潔に（60字程度）","inner":"この瞬間の学生の本音。結果発表で開示（1文）","ng":["該当するNG行動。無ければ空配列"]}\n\n## 出力の厳守ルール（JSONが壊れると処理できないため必ず守ること）\n- 文字列の中でダブルクォート(")を絶対に使わない。強調や引用は「」を使う\n- 文字列の中で改行しない。1行で書く\n- deltaは符号の+を付けない。マイナスのみ-を付ける（例: 8 / -12）\n- 全体を1行のJSONで出力する`;
 }
 
-function timeoutP(ms){
-  return new Promise((_,rej)=>setTimeout(()=>rej(new Error(`タイムアウト（${ms/1000}秒）`)), ms));
+// AI呼び出しの失敗を「利用者向けメッセージ」「再試行してよいか」「原因コード」に分けて持つ。
+// サーバー（/api/chat）は { error, message, retryable, retryAfterMs, requestId } を返すので、それをそのまま使う。
+function aiError(message, opts){
+  const e = new Error(message);
+  e.code = opts.code || 'unknown';
+  e.retryable = opts.retryable !== false;
+  e.status = opts.status;
+  e.retryAfterMs = Number(opts.retryAfterMs) || 0;
+  e.detail = String(opts.detail || '').slice(0,180);
+  return e;
 }
 async function callStudent(msg, action, timedOut){
-  const req = fetch(CFG.endpoint, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ model: CFG.model, max_tokens: 800, json: true,
-      messages:[{ role:'user', content: buildPrompt(msg, action, timedOut) }] }),
-  });
-  const res = await Promise.race([req, timeoutP(CFG.timeoutMs)]);
-  if(!res.ok){
-    let d=''; try{ d = JSON.stringify(await res.json()).slice(0,180); }catch(_){}
-    throw new Error(`HTTP ${res.status} ${d}`);
+  const ac = new AbortController();
+  const timer = setTimeout(()=>ac.abort(), CFG.timeoutMs);
+  let res;
+  try{
+    res = await fetch(CFG.endpoint, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      signal: ac.signal,
+      body: JSON.stringify({ model: CFG.model, max_tokens: 800, json: true,
+        messages:[{ role:'user', content: buildPrompt(msg, action, timedOut) }] }),
+    });
+  }catch(e){
+    if(e && e.name === 'AbortError'){
+      throw aiError(`応答が返ってきませんでした（${Math.round(CFG.timeoutMs/1000)}秒でタイムアウト）。`,
+        { code:'client_timeout', detail:`client timeout ${CFG.timeoutMs}ms` });
+    }
+    throw aiError('ネットワークに接続できませんでした。通信環境をご確認ください。',
+      { code:'client_network', detail:String((e&&e.message)||e) });
+  }finally{
+    clearTimeout(timer);
   }
-  const data = await res.json();
-  const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-  return normalize(parseModelJSON(text));
+
+  if(!res.ok){
+    let body = null;
+    try{ body = await res.json(); }catch(_){}
+    const code = (body && body.error) || ('http_'+res.status);
+    // サーバーが再試行可否を明示していればそれに従う。無ければステータスから推定。
+    const retryable = (body && typeof body.retryable === 'boolean')
+      ? body.retryable : (res.status >= 500 || res.status === 429);
+    throw aiError((body && body.message) || `サーバーでエラーが発生しました（HTTP ${res.status}）。`,
+      { code, retryable, status:res.status, retryAfterMs: body && body.retryAfterMs,
+        detail:`${code} / HTTP ${res.status}${body && body.requestId ? ' / id:'+body.requestId : ''}` });
+  }
+
+  let data = null;
+  try{ data = await res.json(); }
+  catch(e){ throw aiError('サーバーの応答を読み取れませんでした。', { code:'bad_response', detail:String((e&&e.message)||e) }); }
+
+  const text = (data.content||[]).filter(b=>b && b.type==='text').map(b=>b.text).join('');
+  if(!text) throw aiError('AIの応答が空でした。', { code:'empty_content', detail:'content is empty' });
+
+  try{
+    return normalize(parseModelJSON(text));
+  }catch(e){
+    // JSONが壊れているケース。温度ゆらぎで直ることがあるので再試行対象。
+    throw aiError('AIの応答形式が崩れていました。', { code:'bad_format', detail:String((e&&e.message)||e) });
+  }
 }
 function parseModelJSON(raw){
   let t = String(raw||'').replace(/```json/gi,'').replace(/```/g,'').trim();
@@ -395,9 +532,9 @@ function looseParse(t){
 }
 function normalize(r){
   let delta = Math.round(Number(r.delta)||0);
-  delta = Math.max(-24, Math.min(20, delta));
+  delta = Math.max(-25, Math.min(16, delta));
   const kind = KINDS.includes(r.kind) ? r.kind
-    : (delta<=-9?'jirai': delta>=10?'sasaru': delta>=4?'good': delta<=-3?'miss':'flat');
+    : (delta<=-13?'jirai': delta>=10?'sasaru': delta>=4?'good': delta<=-3?'miss':'flat');
   return {
     reply: String(r.reply||'…').slice(0,200),
     togaki: String(r.togaki||'（静かに話を聞いている）').slice(0,60),
@@ -410,23 +547,45 @@ function normalize(r){
 
 const SASARU_RE = /キャリア|成長|失敗|正直|本音|あなた|一緒|意思|尊重|不安|迷|悩|寄り添|大丈夫|応援|向き合/;
 const JIRAI_RE  = /圧迫|詰め|急|早く|絶対|必ず|他社.*(悪|やめ|微妙|比べ物|やば)|うち以外|嘘|盛|とりあえず来/;
+// 重複を除いた語数。1語掠めただけで満額加点されると「無難」に点が付いてしまうため
+function countHits(re, msg){
+  const m = String(msg||'').match(new RegExp(re.source,'g'));
+  return m ? new Set(m).size : 0;
+}
+// 「急かすつもりはありません」を圧迫と誤検出しないよう、否定形が続く場合は地雷とみなさない
+function hitsJirai(msg){
+  const m = String(msg||'');
+  const re = new RegExp(JIRAI_RE.source,'g');
+  let x;
+  while((x = re.exec(m))){
+    const after = m.slice(x.index + x[0].length, x.index + x[0].length + 14);
+    if(/(ない|ませ|ず|しないで|せずに|不要)/.test(after)) continue;
+    return true;
+  }
+  return false;
+}
 function offlineEngine(msg, action, si, timedOut){
   if(timedOut && !msg){
     return { reply:'…（連絡がないまま、時間が過ぎてしまった）', togaki:'（不安げに何度もスマホを確認している…）',
       delta:-12, kind:'jirai', reason:'制限時間内に声をかけられず放置。地雷（返信の放置・遅さ）に直撃。',
       inner:'連絡、来ないな…。私、そんなに興味を持たれてないのかも。', ng:['返信の放置・遅さ'] };
   }
-  let delta=2, hitJirai=false;
-  if(['面談を設定','社員を紹介','オフィス見学'].includes(action)) delta+=5;
-  else if(action==='食事に誘う') delta+=4;
-  else if(action==='資料を送付') delta+=3;
-  if(SASARU_RE.test(msg)) delta+=6;
-  if(JIRAI_RE.test(msg)){ delta-=12; hitJirai=true; }
-  if(msg.length<12) delta-=3;
-  if(msg.length>=40) delta+=2;
+  const q = analyzeMessage(msg);
+  // 基準は-3。何もしなければ気持ちは少しずつ冷めていく、が既定値。
+  // 共感語を1つ掠めただけで加点されると「無難」に点が付いてしまうので、
+  // 加点の主軸は「ESへの言及」と「具体性（文量）」に置き、共感語は薄く効かせる。
+  let delta=-3, hitJirai=false;
+  if(['面談を設定','社員を紹介','オフィス見学'].includes(action)) delta+=4;
+  else if(action==='食事に誘う') delta+=3;
+  else if(action==='資料を送付') delta+=2;
+  delta += Math.min(3, countHits(SASARU_RE, msg));
+  delta += Math.min(9, 3*ES_HOOKS.filter(k=>msg.includes(k)).length);  // ESへの言及が最大の得点源
+  if(hitsJirai(msg)){ delta-=14; hitJirai=true; }
+  if(msg.length>=100) delta+=3; else if(msg.length>=60) delta+=2; else if(msg.length>=30) delta+=1;
   if(si>=2) delta+=1;
-  delta = Math.max(-18, Math.min(18, delta));
-  const kind = hitJirai?'jirai' : delta>=9?'sasaru' : delta>=3?'good' : delta<=-1?'miss' : 'flat';
+  if(q.cap!=null) delta=Math.min(delta,q.cap);   // 手抜きは上限を被せる
+  delta = Math.max(-22, Math.min(16, delta));
+  const kind = hitJirai?'jirai' : delta>=10?'sasaru' : delta>=4?'good' : delta<=-3?'miss' : 'flat';
   const TOGAKI={jirai:'（表情が固くなり、少し身を引いた…）',sasaru:'（目を見て、少し前のめりになった）',
     good:'（小さくうなずいた）',miss:'（曖昧に微笑んで、視線をそらした）',flat:'（静かに話を聞いている）'};
   const INNER={jirai:'なんだか急かされている気がする。ちょっと怖いかも。',sasaru:'この人は、ちゃんと私を見てくれている気がする。',
@@ -450,7 +609,15 @@ function offlineEngine(msg, action, si, timedOut){
     good:'誠実さは伝わった。あと一歩、相手の不安に踏み込めると更に良い。',
     miss:'無難だが個別性が弱く、心を動かすには届かなかった。',
     flat:'可もなく不可もなく。相手の関心にもう少し合わせたい。'};
-  return { reply, togaki:TOGAKI[kind], delta, kind, reason:REASON[kind],
+  // 手抜きが検出されたときは、学生に前向きな反応を返させない
+  if(q.flags.length && !hitJirai){
+    const cool=['はい…（少し間があいた）','そうですか。ありがとうございます。','はい、承知しました。'];
+    return { reply: cool[msg.length%cool.length], togaki:'（画面から少し目を離した）', delta, kind,
+      reason: q.flags.join('・')+'。手抜きの対応と受け取られ、気持ちが離れた。',
+      inner:'あんまり、ちゃんと見てもらえていない気がするな…。', ng:q.flags.slice(0,3) };
+  }
+  return { reply, togaki:TOGAKI[kind], delta, kind,
+    reason: REASON[kind] + (q.es?'（ESの内容に触れられている）':''),
     inner:INNER[kind], ng: hitJirai?[PERSONA.private.jirai[0]]:[] };
 }
 
@@ -543,6 +710,16 @@ function renderBriefing(){
       <div class="hintbox" style="margin-top:8px">⚠️ 本音・地雷・刺さるポイントは非公開。面談での<b>表情とト書き</b>から読み取ろう。</div>
     </div>
     <div class="card lift">
+      <div class="sect-t" style="color:#0b7a45">■ エントリーシート（提出済み）</div>
+      <div class="es-card">
+        <div class="es-q">志望動機</div><div class="es-a">${PERSONA.es.motivation}</div>
+        <div class="es-q">学生時代に力を入れたこと</div><div class="es-a">${PERSONA.es.gakuchika}</div>
+        <div class="es-q">自己PR</div><div class="es-a">${PERSONA.es.selfPR}</div>
+        <div class="es-q">不安に思っていること</div><div class="es-a">${PERSONA.es.concern}</div>
+      </div>
+      <div class="hintbox" style="margin-top:8px">💡 <b>ここが最大の得点源。</b>ESに書かれた具体的な話に触れずに一般論で返すと、加点されません。</div>
+    </div>
+    <div class="card lift">
       <div class="sect-t">■ あなたの会社</div>
       <div style="font-weight:900;font-size:16px;margin-bottom:4px">${c.self.name}</div>
       <div class="row"><b>事業</b><span>${c.self.business}</span></div>
@@ -561,7 +738,10 @@ function renderBriefing(){
       <div class="sect-t" style="color:#555">■ ルール</div>
       <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.9;color:#555">
         <li><b>${STAGES.length}ステージ×各${TPS}ターン（計${TOTAL_TURNS}ターン）</b>で内定承諾を目指す</li>
+        <li>選考は <b>${PHASES.map(p=>p.label).join(' → ')}</b> と進む。今どこかは画面上部に常時表示</li>
+        <li>最初の接触は<b>LINE</b>。対面と違って表情で補えないぶん、<b>文面の質がそのまま伝わる</b></li>
         <li>1ターン＝1回の声かけ。<b>チャンスは${TOTAL_TURNS}回だけ</b></li>
+        <li>採点は辛口。<b>短文・中身のない挨拶・同じことの繰り返しはマイナス</b>。無難な一般論では上がらない</li>
         <li>制限時間 <b>${Math.floor(CFG.turnSeconds/60)}分/ターン</b>。⏰<b>時間切れは「放置」扱いで大幅マイナス</b>（書きかけは自動送信）</li>
         <li>志望度スコアはプレイ中<b>非公開</b>（温度感のみ）。結果発表で全公開</li>
         <li>承諾ライン${THRESHOLD}点到達で内定承諾。参加者全員でランキング</li>
@@ -594,7 +774,7 @@ function renderStageIntro(){
       </div>
     </div>
     <div class="meta">⏱ 相談時間 ${Math.floor(CFG.turnSeconds/60)}分/ターン　｜　⚠️ 時間切れは放置扱い</div>
-    <button class="btn-primary press" onclick="startStage()">面談を始める ▶</button>
+    <button class="btn-primary press" onclick="startStage()">${st.turns[0].ch==='line'?'LINEを送る ▶':'面談を始める ▶'}</button>
   </div></div>`;
 }
 function startStage(){
@@ -615,16 +795,28 @@ function headHTML(){
   const st=STAGES[S.stageIdx];
   return `Stage ${st.id}/${STAGES.length} ・ ターン ${S.turnIdx+1}/${TPS}<small>${st.title}｜${st.sub}</small>`;
 }
+// 選考フェーズのステッパー。今どこにいるかを常時見せる
+function phaseHTML(){
+  const cur=curTurn().phase;
+  return PHASES.map((p,i)=>
+    `<span class="ph ${i<cur?'done':i===cur?'now':''}"><i>${p.icon}</i>${p.label}</span>`
+  ).join('<span class="pharrow">›</span>');
+}
+const chanMeta = t => t.ch==='line'
+  ? { lbl:'LINEで送るメッセージ', ph:'佐藤さんにLINEを送る。ESを読んだうえで、何と書く？', badge:'💬 LINE' }
+  : { lbl:'あなたの発言（面談中）', ph:'学生に何と声をかける？', badge:'🤝 対面' };
 
 function renderPlay(){
+  const cm=chanMeta(curTurn());
   app.innerHTML=`
-  <div class="meeting screen">
+  <div class="meeting screen ${curTurn().ch==='line'?'is-line':''}">
     <div class="m-head">
       <div class="stg">${headHTML()}</div>
+      <div class="phasebar" id="phasebar">${phaseHTML()}</div>
       <div class="pips">
         ${S.offline?'<span class="offline-badge">⚡ オフライン</span>':''}
         ${pipsHTML()}
-        <button class="info-btn press" onclick="S.drawer=true;syncDrawer()">📋 学生情報</button>
+        <button class="info-btn press" onclick="S.drawer=true;syncDrawer()">📋 学生情報・ES</button>
       </div>
     </div>
     <div class="stage-panel">
@@ -642,12 +834,12 @@ function renderPlay(){
     </div>
     <div class="log" id="log"></div>
     <div class="composer">
-      <div class="lbl">あなたの発言（面談中）</div>
+      <div class="lbl"><span class="chbadge" id="chbadge">${cm.badge}</span><span id="complbl">${cm.lbl}</span></div>
       <div class="chips" id="chips">
         ${ACTIONS.map(a=>`<button class="chip ${S.action===a?'on':''}" data-a="${a}" onclick="toggleAction('${a}')">${a}</button>`).join('')}
       </div>
       <div class="field">
-        <textarea id="input" rows="2" maxlength="400" placeholder="学生に何と声をかける？"></textarea>
+        <textarea id="input" rows="2" maxlength="400" placeholder="${cm.ph}"></textarea>
         <button class="send press" id="send" onclick="onSend()">➤</button>
       </div>
       <div class="cnt"><span id="cnt">0</span>/400</div>
@@ -664,6 +856,14 @@ function renderPlay(){
       <div class="row"><b>大学・学年</b><span>${PERSONA.public.university} / ${PERSONA.public.grade}</span></div>
       <div class="row"><b>志望業界</b><span>${PERSONA.public.industries}</span></div>
       <div class="row"><b>就活の軸</b><span>${PERSONA.public.axis}</span></div>
+      <div class="sect-t" style="color:#0b7a45">■ エントリーシート</div>
+      <div class="es-card">
+        <div class="es-q">志望動機</div><div class="es-a">${PERSONA.es.motivation}</div>
+        <div class="es-q">学生時代に力を入れたこと</div><div class="es-a">${PERSONA.es.gakuchika}</div>
+        <div class="es-q">自己PR</div><div class="es-a">${PERSONA.es.selfPR}</div>
+        <div class="es-q">不安に思っていること</div><div class="es-a">${PERSONA.es.concern}</div>
+      </div>
+      <div class="hintbox" style="margin-top:8px">ESに書かれた具体的な話に触れられるかが、評価を大きく分ける。</div>
       <div class="sect-t">■ 自社</div>
       <div class="row"><b>会社</b><span>${COMPANY.self.name}</span></div>
       <div class="row"><b>待遇</b><span>${COMPANY.self.treat}</span></div>
@@ -700,6 +900,13 @@ function setTurnHeader(){
     g.querySelectorAll('.pip').forEach((p,j)=>{const gt=i*TPS+j,cur=globalTurn();
       p.className='pip '+(gt<cur?'done':gt===cur?'now':'');});
   });
+  // ターンが進むと選考フェーズも接触チャネルも変わるので、ここで追随させる
+  const pb=document.getElementById('phasebar'); if(pb) pb.innerHTML=phaseHTML();
+  const cm=chanMeta(t);
+  const badge=document.getElementById('chbadge'); if(badge) badge.textContent=cm.badge;
+  const lbl=document.getElementById('complbl');  if(lbl) lbl.textContent=cm.lbl;
+  const ta=document.getElementById('input');     if(ta) ta.placeholder=cm.ph;
+  const mt=document.querySelector('.meeting');   if(mt) mt.classList.toggle('is-line', t.ch==='line');
 }
 function updateMood(animate){
   const mi=moodIndex(S.score),m=MOODS[mi];
@@ -781,9 +988,18 @@ async function runTurn(msg,action,forceOffline,timedOut){
 
   let r=null,err=null;
   if(CFG.useAI && !forceOffline && !S.offline){
-    for(let attempt=0; attempt<2 && !r; attempt++){
+    const aiStart = Date.now();
+    for(let attempt=0; attempt<MAX_AI_ATTEMPTS && !r; attempt++){
       try{ r=await callStudent(msg,action,timedOut); err=null; }
-      catch(e){ err=String(e.message||e); if(attempt===0) await sleep(400); }
+      catch(e){
+        err=e;
+        // 再試行しても直らないエラー（入力不正・APIキー不正・安全性ブロックなど）は即座に諦める
+        if(e.retryable===false || attempt===MAX_AI_ATTEMPTS-1) break;
+        const wait = Math.min(Math.max(e.retryAfterMs||0, 500*Math.pow(2,attempt)), 4000);
+        // 次の試行がターン時間を食いつぶすなら、ここで打ち切ってエラー表示に切り替える
+        if(Date.now()-aiStart + wait + CFG.timeoutMs > AI_BUDGET_MS) break;
+        await sleep(wait);
+      }
     }
   } else {
     await sleep(700);
@@ -791,7 +1007,7 @@ async function runTurn(msg,action,forceOffline,timedOut){
   }
   clearTmp();
   if(!r){
-    logEl.appendChild(logNode({type:'error',detail:err}));
+    logEl.appendChild(logNode({type:'error',error:err}));
     logEl.scrollTop=logEl.scrollHeight;
     S.busy=false;
     const sb=document.getElementById('send'); if(sb) sb.disabled=false;
@@ -802,6 +1018,16 @@ async function runTurn(msg,action,forceOffline,timedOut){
 
 function applyResult(msg,action,r,timedOut){
   const logEl=document.getElementById('log');
+  // AIが甘く採点したときの最後の歯止め。手抜き入力にプラスは絶対に出させない。
+  // オフラインエンジンは既に同じ上限を適用済みなので、ここを通っても結果は変わらない。
+  if(!timedOut){
+    const q=analyzeMessage(msg);
+    if(q.cap!=null && r.delta>q.cap){
+      r={...r, delta:q.cap, kind:(r.kind==='jirai'?'jirai':'miss'),
+         reason:q.flags.join('・')+'。'+r.reason,
+         ng:(r.ng&&r.ng.length)?r.ng:q.flags.slice(0,3)};
+    }
+  }
   S.score=Math.max(0,Math.min(100,S.score+r.delta));
   const dir=r.delta>0?'温度が上がった':r.delta<0?'温度が下がった':'温度は横ばい';
   const sm={type:'student',text:r.reply,kind:r.kind,dir};
@@ -849,13 +1075,16 @@ function logNode(m){
     return d;
   }
   if(m.type==='error'){
+    const e=m.error||{};
+    const hopeless = e.retryable===false;
     d.className='errbox';d.dataset.tmp='1';
-    d.innerHTML=`⚠️ AI応答に失敗しました。ネットワークをご確認ください。
+    d.innerHTML=`⚠️ ${esc(e.message||'AI応答に失敗しました。ネットワークをご確認ください。')}
+      ${hopeless?'<div class="det">※ 同じ内容で送り直しても同じ結果になる可能性が高いです。オフラインでの続行をおすすめします。</div>':''}
       <div class="acts">
         <button class="retry press" onclick="retryTurn()">🔄 もう一度送る</button>
         <button class="off press" onclick="continueOffline()">⚡ オフラインで続行</button>
       </div>
-      <div class="det">${esc(m.detail||'')}</div>`;
+      <div class="det">${esc(e.detail||'')}</div>`;
     return d;
   }
   const R=REACT[m.kind]||REACT.flat;
