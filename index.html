@@ -1,14 +1,1051 @@
 <!doctype html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>採用コミュニケーション シミュレーション</title>
-    <!-- ★変更点1: Tailwind（これが無いとスタイルが当たらない）。当日イベント用途ならCDNで十分 -->
-    <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>採用面談シミュレーション</title>
+<style>
+:root{
+  --green:#06C755; --navy:#0b3d2e; --ink:#1f2a30; --sub:#6b7b83;
+  --line:#e6ebee; --bg:#eef1f3; --card:#ffffff;
+  --red:#E5484D; --amber:#F5A623; --orange:#F57C00; --lime:#7CB342;
+  --paper:#faf8f3;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+  -webkit-font-smoothing:antialiased;}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+textarea,input{font-family:inherit}
+#app{min-height:100vh}
+
+@keyframes gradientShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+@keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes slideInLeft{from{transform:translateX(-16px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes slideInRight{from{transform:translateX(16px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes popIn{0%{transform:scale(.7);opacity:0}70%{transform:scale(1.06);opacity:1}100%{transform:scale(1)}}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+@keyframes ringPulse{0%{box-shadow:0 0 0 0 rgba(6,199,85,.35)}100%{box-shadow:0 0 0 18px rgba(6,199,85,0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes typing{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
+@keyframes confettiFall{0%{transform:translateY(-20px) rotate(0);opacity:1}100%{transform:translateY(104vh) rotate(680deg);opacity:.85}}
+@keyframes titleIn{0%{transform:scale(2.3);opacity:0;filter:blur(10px)}60%{opacity:1}100%{transform:scale(1);opacity:1;filter:blur(0)}}
+@keyframes lineSweep{from{width:0}to{width:120px}}
+@keyframes urgent{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.screen{animation:fadeIn .35s ease}
+.press{transition:transform .12s ease}
+.press:active{transform:scale(.95)}
+.lift{transition:transform .2s,box-shadow .2s}
+.lift:hover{transform:translateY(-2px);box-shadow:0 12px 24px rgba(0,0,0,.10)}
+
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px}
+.card{background:var(--card);border-radius:18px;box-shadow:0 2px 10px rgba(0,0,0,.05);padding:20px;margin-bottom:16px}
+.btn-primary{display:block;width:100%;padding:16px;border-radius:16px;color:#fff;font-weight:800;font-size:17px;background:var(--green);box-shadow:0 6px 16px rgba(6,199,85,.35)}
+.btn-navy{background:var(--navy);box-shadow:0 6px 16px rgba(11,61,46,.35)}
+.btn-ghost{background:#fff;color:#5a6a72;border:1px solid #dfe6ea;font-weight:700;border-radius:16px;padding:16px}
+.tag{display:inline-block;font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px}
+.muted{color:var(--sub)}
+.row{display:flex;gap:8px;padding:6px 0;font-size:14px;line-height:1.5}
+.row b{min-width:88px;color:var(--sub);font-weight:800;flex-shrink:0}
+
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:linear-gradient(135deg,#0b3d2e,#06C755,#0b3d2e);background-size:200% 200%;animation:gradientShift 12s ease infinite;position:relative;overflow:hidden}
+.hero .inner{max-width:440px;width:100%;text-align:center;position:relative;z-index:2}
+.hero h1{color:#fff;font-size:28px;font-weight:900;margin:8px 0;line-height:1.35}
+.hero p{color:#eafff2;opacity:.9;font-size:14px;line-height:1.7;margin:0 0 18px}
+.flabel{font-size:11px;font-weight:900;color:#bfe9d3;text-align:left;margin-bottom:6px}
+.nameinput{width:100%;padding:14px 16px;border-radius:14px;border:2px solid transparent;
+  background:rgba(0,0,0,.24);color:#fff;font-size:18px;font-weight:800;text-align:center;outline:none;margin-bottom:14px}
+.nameinput::placeholder{color:#7fb99a;font-weight:600;font-size:15px}
+.nameinput:focus{border-color:#fff;background:rgba(0,0,0,.32)}
+.nameinput.err{border-color:var(--red);animation:shake .5s ease}
+.engine{display:flex;gap:6px;background:rgba(0,0,0,.22);border-radius:14px;padding:5px;margin-bottom:14px}
+.engine button{flex:1;padding:9px 6px;border-radius:10px;font-size:12px;font-weight:800;color:#cfe9db;line-height:1.4}
+.engine button.on{background:#fff;color:var(--navy);box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.engine small{display:block;font-weight:700;font-size:10px;opacity:.75}
+
+.intro{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;color:#fff;
+  background:linear-gradient(135deg,#08281f,#0b3d2e,#123f31);background-size:200% 200%;animation:gradientShift 10s ease infinite;position:relative;overflow:hidden}
+.intro .inner{max-width:480px;width:100%;text-align:center;position:relative;z-index:2}
+.intro .num{font-size:12px;font-weight:900;letter-spacing:.35em;color:#7fd6a5;animation:fadeIn .6s ease}
+.intro .big{font-size:66px;font-weight:900;line-height:1;margin:4px 0 8px;text-shadow:0 8px 34px rgba(6,199,85,.55);animation:titleIn .85s cubic-bezier(.2,.9,.3,1)}
+.intro .bar{height:3px;background:var(--green);margin:0 auto 16px;width:120px;border-radius:2px;animation:lineSweep .7s ease .35s both}
+.intro h2{font-size:25px;font-weight:900;margin:0 0 4px;animation:slideUp .6s ease .2s both}
+.intro .sub{font-size:12px;color:#9fd9bb;font-weight:800;margin-bottom:18px;animation:slideUp .6s ease .3s both}
+.intro .brief{background:rgba(255,255,255,.09);border-left:3px solid var(--green);border-radius:12px;padding:14px 16px;font-size:14px;line-height:1.85;text-align:left;margin-bottom:14px;animation:slideUp .6s ease .4s both}
+.intro .state{display:flex;align-items:center;gap:13px;background:rgba(0,0,0,.28);border-radius:14px;padding:12px 16px;margin-bottom:18px;text-align:left;animation:slideUp .6s ease .5s both}
+.intro .state .e{font-size:36px;flex-shrink:0}
+.intro .state .t{font-size:11px;color:#8fc6a9;font-weight:800}
+.intro .state .v{font-weight:900;font-size:15px}
+.intro .meta{font-size:12px;color:#7fd6a5;margin-bottom:16px;animation:slideUp .6s ease .55s both}
+
+.meeting{max-width:680px;margin:0 auto;height:100vh;display:flex;flex-direction:column;background:var(--bg)}
+.m-head{flex-shrink:0;background:#fff;border-bottom:1px solid #e9edef;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.m-head .stg{font-weight:900;font-size:14px}
+.m-head .stg small{display:block;font-weight:700;color:var(--sub);font-size:11px}
+.pips{display:flex;gap:10px;align-items:center}
+.pipgroup{display:flex;gap:3px;align-items:center}
+.pipgroup .lbl{font-size:9px;color:var(--sub);font-weight:800;margin-right:2px}
+.pip{width:9px;height:9px;border-radius:50%;background:#dfe6ea;transition:.4s}
+.pip.done{background:var(--green)}
+.pip.now{background:var(--amber);animation:breathe 1.4s infinite}
+.info-btn{border:1px solid #dfe6ea;background:#fff;border-radius:999px;padding:6px 11px;font-size:12px;font-weight:800;color:#3c4a51}
+.offline-badge{font-size:10px;font-weight:900;background:#fff3cd;color:#8a6d00;border-radius:999px;padding:3px 8px;white-space:nowrap}
+
+.stage-panel{flex-shrink:0;background:linear-gradient(180deg,#123f31,#0b3d2e);color:#fff;padding:14px 16px 12px;position:relative;overflow:hidden}
+.stage-panel .scene{font-size:12px;color:#bfe9d3;background:rgba(255,255,255,.08);padding:6px 10px;border-radius:10px;line-height:1.55;margin-bottom:12px}
+.seat{display:flex;align-items:center;gap:14px}
+.avatar{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:44px;background:rgba(255,255,255,.12);flex-shrink:0;position:relative;transition:.5s}
+.avatar.pulse{animation:ringPulse 1.2s ease}
+.seat .who{flex:1;min-width:0}
+.seat .who .nm{font-weight:900;font-size:16px}
+.seat .who .mood{font-size:13px;font-weight:800;margin-top:2px;transition:.4s}
+.tempbar{display:flex;gap:4px;margin-top:8px}
+.tempbar .seg{flex:1;height:8px;border-radius:999px;background:rgba(255,255,255,.18);overflow:hidden}
+.tempbar .seg .fill{height:100%;width:0;border-radius:999px;transition:.6s}
+.temp-note{font-size:10px;color:#8fc6a9;margin-top:5px;text-align:right}
+.togaki{min-height:20px;margin-top:10px;font-size:13px;font-style:italic;color:#cfe9db;transition:.3s;opacity:0}
+.togaki.show{opacity:1;animation:slideUp .4s ease}
+
+.log{flex:1;overflow-y:auto;padding:14px 16px 4px;background:var(--paper);
+  background-image:linear-gradient(rgba(0,0,0,.02) 1px,transparent 1px);background-size:100% 30px}
+.scene-div{display:flex;align-items:center;gap:10px;margin:14px 0 10px;animation:popIn .4s ease}
+.scene-div .line{flex:1;height:1px;background:#e2ddd0}
+.scene-div .txt{font-size:11px;font-weight:900;color:#8a7f66;background:#efeadc;padding:3px 12px;border-radius:999px;white-space:nowrap}
+.notice{text-align:center;margin:10px 0 14px;animation:popIn .4s ease}
+.notice span{display:inline-block;font-size:12px;font-weight:900;background:#fdecea;color:#c62828;border:1px solid #f3c9c6;padding:5px 14px;border-radius:999px}
+.turn-row{margin-bottom:14px}
+.turn-row .who{font-size:11px;font-weight:900;margin-bottom:3px;color:var(--sub)}
+.turn-row.student .who{color:#0b7a45}
+.turn-row.you{text-align:right}
+.turn-row.you .who{color:#a06a00}
+.linecard{display:inline-block;max-width:82%;padding:10px 14px;font-size:15px;line-height:1.6;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.turn-row.student .linecard{background:#fff;border:1px solid #ece7da;border-left:3px solid #0b7a45;color:#2a3439;animation:slideInLeft .35s ease}
+.turn-row.you .linecard{background:#fffdf5;border:1px solid #f0e6c8;border-right:3px solid var(--amber);color:#4a3f24;text-align:left;animation:slideInRight .35s ease}
+.turn-row.you .linecard.to{background:#fdecea;border-color:#f3c9c6;border-right-color:#c62828;color:#8c2f2b;font-style:italic}
+.act-chip{display:inline-block;margin-bottom:5px;font-size:11px;font-weight:800;background:#fff3cd;color:#8a6d00;padding:3px 9px;border-radius:8px}
+.reaction{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;font-weight:900;padding:4px 11px;border-radius:999px;animation:popIn .4s ease}
+.typing{display:inline-flex;gap:4px;padding:12px 16px;background:#fff;border:1px solid #ece7da;border-radius:12px}
+.typing i{width:7px;height:7px;border-radius:50%;background:#bbb;display:inline-block}
+.typing i:nth-child(1){animation:typing 1s infinite}
+.typing i:nth-child(2){animation:typing 1s .18s infinite}
+.typing i:nth-child(3){animation:typing 1s .36s infinite}
+.errbox{background:#fdecea;border:1px solid #f5c6c2;color:#b3261e;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.6;animation:shake .5s ease}
+.errbox .acts{display:flex;gap:8px;margin-top:9px}
+.errbox button{font-size:12px;font-weight:900;border-radius:9px;padding:8px 12px}
+.errbox .retry{background:#c62828;color:#fff}
+.errbox .off{background:#fff;color:#8a6d00;border:1px solid #e6c98a}
+.errbox .det{font-size:11px;color:#a06a6a;margin-top:5px;word-break:break-all}
+
+.composer{flex-shrink:0;background:#fff;border-top:1px solid #e9edef;padding:10px 14px 14px}
+.composer .lbl{font-size:11px;font-weight:900;color:var(--sub);margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.chip{font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;border:1px solid #dfe6ea;background:#fff;color:#5a6a72;transition:.15s}
+.chip.on{background:var(--green);color:#fff;border-color:var(--green);box-shadow:0 2px 8px rgba(6,199,85,.35)}
+.composer .field{display:flex;gap:8px;align-items:flex-end}
+.composer textarea{flex:1;resize:none;border:1px solid #dcdfe2;border-radius:14px;padding:10px 12px;font-size:15px;outline:none;line-height:1.5}
+.composer textarea:focus{border-color:var(--green)}
+.composer textarea:disabled{background:#f4f5f6;color:#aaa}
+.send{width:50px;height:50px;border-radius:50%;flex-shrink:0;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;background:var(--green);box-shadow:0 4px 14px rgba(6,199,85,.4)}
+.send:disabled{background:#ccc;box-shadow:none}
+.cnt{text-align:right;font-size:11px;color:#bbb;margin-top:3px}
+.timer{font-size:12px;font-weight:900;color:#3c4a51;background:#f0f3f5;border-radius:999px;padding:5px 10px;min-width:52px;text-align:center;display:inline-block}
+.timer.warn{color:#fff;background:var(--amber)}
+.timer.low{color:#fff;background:var(--red);animation:urgent 1s ease-in-out infinite}
+
+.drawer-ov{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:.25s;z-index:40}
+.drawer-ov.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(400px,88vw);background:#fff;transform:translateX(102%);transition:.28s cubic-bezier(.2,.7,.3,1);z-index:41;overflow-y:auto;box-shadow:-8px 0 30px rgba(0,0,0,.18)}
+.drawer.open{transform:translateX(0)}
+.drawer .dh{position:sticky;top:0;background:var(--navy);color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;font-weight:900}
+.drawer .dh button{color:#fff;font-size:20px;line-height:1}
+.drawer .body{padding:16px}
+.sect-t{font-size:12px;font-weight:900;margin:16px 0 6px;color:var(--green)}
+.hintbox{background:#fff8e1;color:#8a6d00;font-size:12px;padding:8px 10px;border-radius:10px;line-height:1.6}
+
+.report{min-height:100vh;padding:24px 16px;background:var(--bg)}
+.report .badge{display:inline-block;font-size:12px;font-weight:900;color:#fff;background:var(--navy);padding:5px 14px;border-radius:999px;margin-bottom:10px}
+.trend{display:flex;align-items:center;justify-content:center;gap:14px;font-size:40px;margin:6px 0 4px}
+.trend .arrow{font-size:22px;color:var(--sub)}
+.rep-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:14px;line-height:1.6}
+.rep-item:last-child{border-bottom:none}
+.rep-item .ic{font-size:18px;flex-shrink:0}
+
+.result{min-height:100vh;padding:24px 16px;background:var(--bg);position:relative;overflow:hidden}
+.res-hero{border-radius:20px;padding:26px 22px;text-align:center;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.18);margin-bottom:18px}
+.res-hero.ok{background:linear-gradient(135deg,#0b3d2e,#06C755,#0b3d2e);background-size:200% 200%;animation:gradientShift 8s infinite}
+.res-hero.ng{background:linear-gradient(135deg,#5a1a1a,#c62828)}
+.res-hero .em{font-size:56px}
+.res-hero .quote{background:rgba(0,0,0,.2);border-radius:12px;padding:12px;margin-top:12px;font-size:13px;line-height:1.7;text-align:left}
+svg.chart{width:100%;height:200px;display:block}
+.fb-stage{font-size:12px;font-weight:900;color:#fff;background:var(--green);border-radius:8px;padding:3px 10px;display:inline-block;margin:14px 0 8px}
+.fb{padding:10px 0;border-bottom:1px solid #f2f2f2}
+.fb:last-child{border-bottom:none}
+.fb .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.fb .tt{font-size:12px;font-weight:800;background:#eef2f5;color:#556;border-radius:6px;padding:2px 8px}
+.fb .dl{font-weight:900;font-size:14px}
+.fb .said{font-size:13px;margin:3px 0}
+.fb .rz{font-size:13px;background:#f6f9fa;border-radius:10px;padding:7px 10px;margin:3px 0}
+.fb .in{font-size:13px;font-style:italic;color:#8e44ad}
+.fb .ng{font-size:12px;color:#c62828;margin-top:3px}
+.confetti-pieces{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5}
+.confetti-pieces i{position:absolute;top:-10px;width:8px;height:12px;animation:confettiFall linear forwards}
+
+.rank{min-height:100vh;padding:26px 16px;display:flex;align-items:center;
+  background:linear-gradient(135deg,#111,#2d2d2d,#111);background-size:200% 200%;animation:gradientShift 14s infinite}
+.rank .inner{max-width:640px;margin:0 auto;width:100%}
+.rrow{display:flex;align-items:center;gap:14px;background:#fff;border-radius:16px;padding:13px 18px;margin-bottom:10px;box-shadow:0 6px 16px rgba(0,0,0,.25);animation:slideInRight .5s ease both}
+.rrow.you{background:linear-gradient(90deg,#0b3d2e,#06C755);color:#fff}
+.rrow .pos{font-size:21px;font-weight:900;width:34px;text-align:center;color:#999}
+.rrow .em{font-size:27px}
+.rrow .nm{flex:1;font-weight:900;font-size:16px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.rrow .sc{text-align:right;font-weight:900;font-size:20px}
+.rank .tools{display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+.rank .tools button{font-size:13px;font-weight:800;border-radius:12px;padding:11px 20px}
+.rank .note{color:#888;font-size:11px;margin-top:14px;text-align:center;line-height:1.7}
+.rank .count{text-align:center;color:#7fd6a5;font-size:12px;font-weight:800;margin-bottom:16px}
+.spin{color:#aaa;text-align:center;padding:30px;font-size:14px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const CFG = {
+  useAI: true,
+  endpoint: '/api/chat',
+  model: 'gemini-2.5-flash',
+  turnSeconds: 180,
+  warnSeconds: 30,
+  autoSubmitOnTimeout: true,
+  timeoutMs: 30000,
+  room: 'mochica0722',
+};
+const TPS = 2;
+const NAME_MAX = 12;
+
+const PERSONA = {
+  public:{ name:'佐藤 みなと', university:'私立大学 経済学部（文系）', grade:'学部4年',
+    industries:'人材 / IT / 広告 など幅広く', axis:'若いうちから成長できる環境・人の役に立つ実感' },
+  private:{
+    honne:'口では「成長」と言うが、実は安定も気にしている。親から「大手にしなさい」と言われ揺れやすい。詰められる環境は本当は怖い。',
+    sasaru:['具体的なキャリアパスの提示','社員のリアルな失敗談・本音','自分の言葉で語る誠実さ','本人の意思決定を尊重する姿勢'],
+    jirai:['圧迫感のある詰め・急かし','テンプレ丸出しの対応','返信の放置・遅さ','他社を悪く言う過度な囲い込み','その場しのぎの嘘・話を盛る'],
+    personality:'慎重派・共感重視。本音は出しにくいが、信頼すると一気に開く',
+    priority:'成長 ＞ 人・社風 ＞ 安定 ＞ 年収 ＞ 勤務地' },
+  initialScore:48,
+};
+const COMPANY = {
+  self:{ name:'株式会社ブライトキャリア', business:'人材紹介・採用支援（HR Tech）',
+    scale:'従業員300名 / 設立15年 / 成長中のベンチャー', treat:'初任給28万 / 平均残業30h / リモート週2',
+    culture:'若手裁量が大きくフラット、スピード感重視', flow:'説明会 → 一次面接 → 最終面接 → 内定' },
+  rivals:[
+    { name:'メガ・ホールディングス', tag:'大手・安定', desc:'年収高・福利厚生充実だが年功序列で裁量は小さめ。親ウケ◎' },
+    { name:'スタートX', tag:'急成長スタートアップ', desc:'裁量最大・成長速いが激務で不安定。ハイリスク' },
+  ],
+};
+const STAGES = [
+  { id:1, title:'出会い・信頼づくり', sub:'序盤 — 関係構築',
+    intro:'説明会で出会った佐藤さんは、まだあなたの会社を「候補のひとつ」としか見ていない。ここで信頼を勝ち取れなければ、後半で何を言っても届かない。まずは「この人になら本音を話せる」と思ってもらうことが全て。',
+    turns:[
+      { label:'説明会後の初回接触', scene:'会社説明会の翌日。熱心にメモを取っていた佐藤さんとの初回面談。まだ志望度は高くない。' },
+      { label:'軸のヒアリングと動機づけ', scene:'就活で大事にしていることを聞き出しつつ、一次面接へ背中を押す場面。不安と期待が入り混じっている。' },
+    ]},
+  { id:2, title:'深耕・動機づけ', sub:'中盤 — 志望度を育てる',
+    intro:'一次面接を通過し、距離は少し縮まった。しかしこのステージの終わりに、佐藤さんから「他社から内定が出た」という連絡が入る。それまでにどれだけ志望度を積み上げられているかが、後半の生死を分ける。',
+    turns:[
+      { label:'一次面接後のフォロー', scene:'一次面接を通過。手応えはあったが少し不安そう。現場のリアルを見せて志望度を一段引き上げたい場面。' },
+      { label:'「他社から内定」の一報', scene:'「メガ・ホールディングスさんから内定をいただきました。正直迷っています」と打ち明けられた。' },
+    ]},
+  { id:3, title:'意思決定・クロージング', sub:'終盤 — 決断の後押し',
+    intro:'大手の内定を手にした佐藤さんは、大きく揺れている。ここで焦って囲い込めば一瞬で終わる。相手の迷いに正面から向き合い、最後は本人の意思で選んでもらえるか。残り2ターン、勝負の時。',
+    turns:[
+      { label:'他社比較と最終面接', scene:'最大の山場。大手との間で揺れる気持ちに正面から向き合いつつ、最終面接へ進む意思を固めてもらう場面。' },
+      { label:'内定承諾のクロージング', scene:'最終面接を通過し、内定を提示。最後の意思決定を後押しするクロージング。' },
+    ]},
+];
+const TOTAL_TURNS = STAGES.length * TPS;
+const ACTIONS = ['面談を設定','社員を紹介','オフィス見学','食事に誘う','資料を送付','（発言のみ）'];
+const THRESHOLD = 75;
+const TIMEOUT_MSG = '（時間切れ・何も声をかけられなかった）';
+
+const MOODS = [
+  { em:'😨', label:'引いている',    color:'var(--red)' },
+  { em:'😕', label:'警戒気味',      color:'var(--orange)' },
+  { em:'😐', label:'ふつう',        color:'var(--amber)' },
+  { em:'🙂', label:'前向き',        color:'var(--lime)' },
+  { em:'😍', label:'心を開いている', color:'var(--green)' },
+];
+function moodIndex(s){ return s>=80?4 : s>=65?3 : s>=45?2 : s>=30?1 : 0; }
+const REACT = {
+  sasaru:{ label:'刺さった',     icon:'💚', bg:'#e7f8ee', fg:'#0b7a45' },
+  good:  { label:'手応えあり',   icon:'👍', bg:'#eef7f0', fg:'#2e7d32' },
+  flat:  { label:'ふつう',       icon:'➖', bg:'#eef1f3', fg:'#5a6a72' },
+  miss:  { label:'響かなかった', icon:'🌫', bg:'#fff4e5', fg:'#a86400' },
+  jirai: { label:'地雷を踏んだ', icon:'⚠️', bg:'#fdecea', fg:'#c62828' },
+};
+const KINDS = Object.keys(REACT);
+
+function pidFor(name){
+  let h=5381;
+  for(let i=0;i<name.length;i++){ h=((h<<5)+h+name.charCodeAt(i))>>>0; }
+  return h.toString(36);
+}
+async function saveScore(){
+  try{
+    const r = await fetch('/api/rank', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ room:CFG.room, pid:pidFor(S.name), name:S.name,
+        score:S.score, ok:S.score>=THRESHOLD }),
+    });
+    return r.ok;
+  }catch(e){ return false; }
+}
+async function loadScores(){
+  try{
+    const r = await fetch('/api/rank?room='+encodeURIComponent(CFG.room));
+    if(!r.ok) return null;
+    const d = await r.json();
+    return Array.isArray(d.rows) ? d.rows : [];
+  }catch(e){ return null; }
+}
+async function clearScores(){
+  try{
+    await fetch('/api/rank', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ room:CFG.room, action:'clear' }),
+    });
+  }catch(e){}
+}
+
+function buildPrompt(msg, action, timedOut){
+  const st=STAGES[S.stageIdx], t=st.turns[S.turnIdx], p=PERSONA.public, pv=PERSONA.private, c=COMPANY;
+  const hist = S.history.length
+    ? S.history.map(h=>`人事: ${h.message}${h.action&&h.action!=='（発言のみ）'?`（${h.action}）`:''}\n学生: ${h.reply}`).join('\n')
+    : '（まだ会話なし）';
+  const timeoutBlock = timedOut ? `\n# ★重要：時間切れ（放置）\nプレイヤーは制限時間内に何も声をかけられませんでした。\n学生の側から見ると「連絡が来ないまま時間だけが過ぎた」状態です。\nこれは学生の地雷「返信の放置・遅さ」に該当します。\n放置された学生として、戸惑い・不信・気持ちの冷えを反映した反応を返し、deltaは必ずマイナス（-8〜-18程度）にしてください。\nkindは "jirai" とし、ngに「返信の放置・遅さ」を含めてください。\n` : '';
+
+  return `あなたは新卒採用のコミュニケーション体験ゲームのAIエンジンです。\n下記の「学生ペルソナ」になりきって面談での発言を返し、同時に人事担当者（プレイヤー）の発言を評価します。\n\n# 学生ペルソナ\n## 公開情報（プレイヤーも見ている）\n- 氏名: ${p.name} / ${p.university} / ${p.grade}\n- 志望業界: ${p.industries}\n- 就活の軸: ${p.axis}\n## 非公開の内面（あなただけが知る。決して口に出さない）\n- 本音: ${pv.honne}\n- 刺さるポイント: ${pv.sasaru.join(' / ')}\n- 地雷（踏まれると一気に冷める）: ${pv.jirai.join(' / ')}\n- 性格: ${pv.personality}\n- 重視条件の優先度: ${pv.priority}\n\n# 企業情報\n## 自社（プレイヤーの会社）\n${c.self.name} / ${c.self.business} / ${c.self.scale} / ${c.self.treat} / 社風: ${c.self.culture} / 選考: ${c.self.flow}\n## 競合\n${c.rivals.map(r=>`${r.name}（${r.tag}）: ${r.desc}`).join('\n')}\n\n# 現在の状況\n- Stage ${st.id}/${STAGES.length}「${st.title}」 ターン ${S.turnIdx+1}/${TPS}: ${t.label}\n- 場面: ${t.scene}\n- 全${TOTAL_TURNS}ターン中の${S.stageIdx*TPS+S.turnIdx+1}ターン目\n- 現在の志望度: ${S.score}/100（内部値。会話で数値に言及することは絶対に禁止）\n\n# これまでの面談\n${hist}\n\n# 今回のプレイヤーの発言\n- 発言: ${msg || '（なし）'}\n- アクション: ${action || '（発言のみ）'}\n${timeoutBlock}\n# タスク\n1. 対面の面談での発言として、就活生らしく自然に返す（口語で1〜3文。作り込みすぎない）\n   - 刺さる対応には心を開き気味に、地雷を踏まれたら素っ気なく／戸惑い気味に\n   - 会話履歴・場面・内面と一貫させること\n2. ト書き(togaki): そのときの表情・仕草を「（〜した）」の形で1つ。会話文は入れない\n3. 評価して志望度の変動値(delta)を決める\n   - 評価軸: 就活の軸との整合 / パーソナライズ度（テンプレ感がないか） / 場面への適切さ / NG行動（圧迫・急かし・放置・過度な囲い込み・嘘）\n   - 目安: 素晴らしい +10〜+18 / 良い +4〜+9 / 可もなく不可もなく -2〜+3 / 微妙 -8〜-3 / NG行動 -22〜-9\n   - ※全${TOTAL_TURNS}ターンで承諾ライン${THRESHOLD}点に届きうる幅で採点すること\n4. kind: "sasaru"(刺さった) / "good"(手応えあり) / "flat"(ふつう) / "miss"(響かなかった) / "jirai"(地雷を踏んだ) のいずれか1つ\n\n# 出力\n下記JSONオブジェクトのみを出力。前後に説明文やコードブロック記法を一切付けないこと。\n{"reply":"学生の発言","togaki":"（表情や仕草）","delta":整数,"kind":"sasaru|good|flat|miss|jirai","reason":"スコアが動いた理由。結果発表のフィードバック用に簡潔に（60字程度）","inner":"この瞬間の学生の本音。結果発表で開示（1文）","ng":["該当するNG行動。無ければ空配列"]}\n\n## 出力の厳守ルール（JSONが壊れると処理できないため必ず守ること）\n- 文字列の中でダブルクォート(")を絶対に使わない。強調や引用は「」を使う\n- 文字列の中で改行しない。1行で書く\n- deltaは符号の+を付けない。マイナスのみ-を付ける（例: 8 / -12）\n- 全体を1行のJSONで出力する`;
+}
+
+function timeoutP(ms){
+  return new Promise((_,rej)=>setTimeout(()=>rej(new Error(`タイムアウト（${ms/1000}秒）`)), ms));
+}
+async function callStudent(msg, action, timedOut){
+  const req = fetch(CFG.endpoint, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ model: CFG.model, max_tokens: 800, json: true,
+      messages:[{ role:'user', content: buildPrompt(msg, action, timedOut) }] }),
+  });
+  const res = await Promise.race([req, timeoutP(CFG.timeoutMs)]);
+  if(!res.ok){
+    let d=''; try{ d = JSON.stringify(await res.json()).slice(0,180); }catch(_){}
+    throw new Error(`HTTP ${res.status} ${d}`);
+  }
+  const data = await res.json();
+  const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+  return normalize(parseModelJSON(text));
+}
+function parseModelJSON(raw){
+  let t = String(raw||'').replace(/```json/gi,'').replace(/```/g,'').trim();
+  const s=t.indexOf('{'), e=t.lastIndexOf('}');
+  if(s<0||e<0) throw new Error('JSONが見つかりません: '+t.slice(0,80));
+  t = t.slice(s, e+1);
+  try{ return JSON.parse(t); }catch(_){}
+  let fixed = t
+    .replace(/[\u201C\u201D\u2018\u2019]/g,'')
+    .replace(/[\r\n\t]+/g,' ')
+    .replace(/:\s*\+(\d)/g,': $1')
+    .replace(/,\s*([}\]])/g,'$1');
+  try{ return JSON.parse(fixed); }catch(_){}
+  const salvaged = looseParse(fixed);
+  if(salvaged) return salvaged;
+  throw new Error('JSON解析に失敗: '+t.slice(0,100));
+}
+function looseParse(t){
+  const ORDER = ['reply','togaki','delta','kind','reason','inner','ng'];
+  const grabStr = (key)=>{
+    const ki = t.indexOf('"'+key+'"');
+    if(ki<0) return null;
+    let j = t.indexOf(':', ki);
+    if(j<0) return null;
+    j++;
+    while(j<t.length && /\s/.test(t[j])) j++;
+    if(t[j] !== '"') return null;
+    j++;
+    let end = t.length;
+    for(const k of ORDER){
+      if(k===key) continue;
+      const p = t.indexOf('"'+k+'"', j);
+      if(p>=0 && p<end) end = p;
+    }
+    let seg = t.slice(j, end);
+    seg = seg.replace(/[\s,]*$/,'').replace(/"$/,'').trim();
+    return seg.replace(/\\"/g,'"').replace(/\\n/g,' ');
+  };
+  const reply = grabStr('reply');
+  if(!reply) return null;
+  const dm = t.match(/"delta"\s*:\s*([+-]?\d+)/);
+  const km = t.match(/"kind"\s*:\s*"([a-z]+)"/);
+  const nm = t.match(/"ng"\s*:\s*\[([^\]]*)\]/);
+  const ng = nm ? (nm[1].match(/"([^"]+)"/g)||[]).map(x=>x.replace(/"/g,'')) : [];
+  return { reply, togaki: grabStr('togaki')||'', delta: dm?Number(dm[1]):0,
+    kind: km?km[1]:undefined, reason: grabStr('reason')||'—', inner: grabStr('inner')||'—', ng };
+}
+function normalize(r){
+  let delta = Math.round(Number(r.delta)||0);
+  delta = Math.max(-24, Math.min(20, delta));
+  const kind = KINDS.includes(r.kind) ? r.kind
+    : (delta<=-9?'jirai': delta>=10?'sasaru': delta>=4?'good': delta<=-3?'miss':'flat');
+  return {
+    reply: String(r.reply||'…').slice(0,200),
+    togaki: String(r.togaki||'（静かに話を聞いている）').slice(0,60),
+    delta, kind,
+    reason: String(r.reason||'—').slice(0,140),
+    inner: String(r.inner||'—').slice(0,120),
+    ng: Array.isArray(r.ng) ? r.ng.slice(0,3).map(x=>String(x).slice(0,40)) : [],
+  };
+}
+
+const SASARU_RE = /キャリア|成長|失敗|正直|本音|あなた|一緒|意思|尊重|不安|迷|悩|寄り添|大丈夫|応援|向き合/;
+const JIRAI_RE  = /圧迫|詰め|急|早く|絶対|必ず|他社.*(悪|やめ|微妙|比べ物|やば)|うち以外|嘘|盛|とりあえず来/;
+function offlineEngine(msg, action, si, timedOut){
+  if(timedOut && !msg){
+    return { reply:'…（連絡がないまま、時間が過ぎてしまった）', togaki:'（不安げに何度もスマホを確認している…）',
+      delta:-12, kind:'jirai', reason:'制限時間内に声をかけられず放置。地雷（返信の放置・遅さ）に直撃。',
+      inner:'連絡、来ないな…。私、そんなに興味を持たれてないのかも。', ng:['返信の放置・遅さ'] };
+  }
+  let delta=2, hitJirai=false;
+  if(['面談を設定','社員を紹介','オフィス見学'].includes(action)) delta+=5;
+  else if(action==='食事に誘う') delta+=4;
+  else if(action==='資料を送付') delta+=3;
+  if(SASARU_RE.test(msg)) delta+=6;
+  if(JIRAI_RE.test(msg)){ delta-=12; hitJirai=true; }
+  if(msg.length<12) delta-=3;
+  if(msg.length>=40) delta+=2;
+  if(si>=2) delta+=1;
+  delta = Math.max(-18, Math.min(18, delta));
+  const kind = hitJirai?'jirai' : delta>=9?'sasaru' : delta>=3?'good' : delta<=-1?'miss' : 'flat';
+  const TOGAKI={jirai:'（表情が固くなり、少し身を引いた…）',sasaru:'（目を見て、少し前のめりになった）',
+    good:'（小さくうなずいた）',miss:'（曖昧に微笑んで、視線をそらした）',flat:'（静かに話を聞いている）'};
+  const INNER={jirai:'なんだか急かされている気がする。ちょっと怖いかも。',sasaru:'この人は、ちゃんと私を見てくれている気がする。',
+    good:'今の話は、少し心に残った。',miss:'悪くはないけど、決め手には欠けるかな。',flat:'まだ、どちらとも言えない。'};
+  const REPLIES={
+    jirai:['えっと…少し考える時間をいただけますか。','そう言われると、正直ちょっと戸惑ってしまって…','はい…（少し口数が減る）'],
+    sasaru:[['そこまで考えてくださるんですね。少し安心しました。','正直、そういう本音の話が一番ありがたいです。'],
+            ['その話、すごく刺さりました。前向きに考えたいです。','ここまで向き合ってもらえると思っていませんでした。'],
+            ['…正直、気持ちが固まってきました。ありがとうございます。','最後まで私のことを考えてくれて、嬉しいです。']],
+    good:[['ありがとうございます。少しずつイメージが湧いてきました。','なるほど、そういう環境なら面白そうですね。'],
+          ['その視点は新鮮でした。もう少し聞いてみたいです。','だんだん、御社のことが気になってきました。'],
+          ['迷いはありますが、前向きに考えられそうです。','その言葉で、少し背中を押された気がします。']],
+    miss:['ありがとうございます。（少し考え込む）','そうですね…もう少し自分でも整理してみます。','なるほど、参考になります。'],
+    flat:['はい、承知しました。','ありがとうございます。','そうなんですね。'],
+  };
+  const pool=(kind==='sasaru'||kind==='good')?REPLIES[kind][si]:REPLIES[kind];
+  const reply=pool[msg.length % pool.length];
+  const REASON={
+    jirai:'圧迫・急かしと受け取られ、警戒された。地雷（'+PERSONA.private.jirai[0]+'）に該当。',
+    sasaru:'軸（'+PERSONA.public.axis+'）や本音に寄り添えた。刺さるポイントを突けている。',
+    good:'誠実さは伝わった。あと一歩、相手の不安に踏み込めると更に良い。',
+    miss:'無難だが個別性が弱く、心を動かすには届かなかった。',
+    flat:'可もなく不可もなく。相手の関心にもう少し合わせたい。'};
+  return { reply, togaki:TOGAKI[kind], delta, kind, reason:REASON[kind],
+    inner:INNER[kind], ng: hitJirai?[PERSONA.private.jirai[0]]:[] };
+}
+
+const urlName = (new URLSearchParams(location.search).get('name')||'').slice(0,NAME_MAX);
+const S = {
+  screen:'opening', name: urlName,
+  stageIdx:0, turnIdx:0, score:PERSONA.initialScore,
+  log:[], history:[], action:'', input:'', busy:false, offline:false,
+  pending:null, timerId:null, timeLeft:CFG.turnSeconds, timedOut:false,
+  stageStartScore:PERSONA.initialScore, drawer:false, saved:false,
+};
+const app=document.getElementById('app');
+const globalTurn=()=>S.stageIdx*TPS+S.turnIdx;
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const clip=(s,n)=>{const t=String(s||'');return esc(t.length>n?t.slice(0,n)+'…':t);};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+function reset(){
+  clearInterval(S.timerId);
+  Object.assign(S,{screen:'opening',stageIdx:0,turnIdx:0,score:PERSONA.initialScore,
+    log:[],history:[],action:'',input:'',busy:false,pending:null,timedOut:false,
+    timeLeft:CFG.turnSeconds,stageStartScore:PERSONA.initialScore,drawer:false,saved:false});
+  render();
+}
+function setEngine(useAI){ CFG.useAI=useAI; S.offline=!useAI; render(); }
+
+function render(){
+  clearInterval(S.timerId);
+  if(S.screen==='opening')    return renderOpening();
+  if(S.screen==='briefing')   return renderBriefing();
+  if(S.screen==='stageIntro') return renderStageIntro();
+  if(S.screen==='play')       return renderPlay();
+  if(S.screen==='report')     return renderReport();
+  if(S.screen==='result')     return renderResult();
+  if(S.screen==='ranking')    return renderRanking();
+}
+
+function renderOpening(){
+  app.innerHTML=`<div class="hero screen"><div class="inner">
+    <div style="font-size:56px;animation:popIn .7s ease">🤝</div>
+    <h1>採用面談<br>シミュレーション</h1>
+    <p>AIが演じる就活生と面談し、内定承諾を勝ち取れ。<br>全${STAGES.length}ステージ×${TPS}ターン（計${TOTAL_TURNS}回）の個人戦。</p>
+    <div class="flabel">お名前・ニックネーム（ランキングに表示されます）</div>
+    <input class="nameinput" id="pname" maxlength="${NAME_MAX}" placeholder="例：山田 / たなか / みなと" />
+    <div class="flabel">エンジン</div>
+    <div class="engine">
+      <button class="${CFG.useAI?'on':''}" onclick="setEngine(true)">🤖 AIエンジン<small>本物のLLMが応答</small></button>
+      <button class="${!CFG.useAI?'on':''}" onclick="setEngine(false)">⚡ オフライン<small>ルールベース（比較用）</small></button>
+    </div>
+    <div class="card lift" style="text-align:left">
+      <div class="muted" style="font-size:11px;font-weight:800">担当企業</div>
+      <div style="font-weight:900;color:var(--green);font-size:16px">${COMPANY.self.name}</div>
+      <div class="muted" style="font-size:11px;font-weight:800;margin-top:8px">攻略対象</div>
+      <div style="font-weight:900">${PERSONA.public.name}（${PERSONA.public.grade}）</div>
+    </div>
+    <button class="btn-primary btn-navy press" onclick="toBriefing()">作戦会議へ ▶</button>
+    <p style="font-size:10px;color:#9fd9bb;margin-top:14px;line-height:1.6">
+      ※最終スコアは参加者全員のランキングに保存されます<br>同じ名前でもう一度プレイすると、自分の記録が更新されます</p>
+  </div></div>`;
+  const el=document.getElementById('pname');
+  el.value=S.name;
+  el.oninput=()=>{ S.name=el.value; el.classList.remove('err'); };
+  el.onkeydown=(e)=>{ if(e.key==='Enter') toBriefing(); };
+  if(!S.name) el.focus();
+}
+function toBriefing(){
+  const el=document.getElementById('pname');
+  const v=(el?el.value:S.name||'').trim();
+  if(!v){
+    if(el){ el.classList.remove('err'); void el.offsetWidth; el.classList.add('err'); el.focus(); }
+    return;
+  }
+  S.name=v.slice(0,NAME_MAX);
+  S.screen='briefing'; render();
+}
+
+function renderBriefing(){
+  const p=PERSONA.public,c=COMPANY;
+  app.innerHTML=`<div class="screen"><div class="wrap">
+    <h2 style="font-weight:900;margin:0 0 4px">📋 作戦会議　<span class="tag" style="background:#0b3d2e;color:#fff">${esc(S.name)}</span></h2>
+    <p class="muted" style="margin:0 0 16px;font-size:14px">面談前に、攻略対象と自社・競合を頭に入れよう。学生情報は面談中も右上の「学生情報」からいつでも確認できます。</p>
+    <div class="card lift">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
+        <div class="avatar" style="width:52px;height:52px;font-size:28px;background:#e8eef1;animation:breathe 3.5s infinite">🧑‍🎓</div>
+        <div><div style="font-weight:900;font-size:17px">${p.name}</div><div class="muted" style="font-size:11px">攻略対象の学生（公開プロフィール）</div></div>
+      </div>
+      <div class="row"><b>大学・学年</b><span>${p.university} / ${p.grade}</span></div>
+      <div class="row"><b>志望業界</b><span>${p.industries}</span></div>
+      <div class="row"><b>就活の軸</b><span>${p.axis}</span></div>
+      <div class="hintbox" style="margin-top:8px">⚠️ 本音・地雷・刺さるポイントは非公開。面談での<b>表情とト書き</b>から読み取ろう。</div>
+    </div>
+    <div class="card lift">
+      <div class="sect-t">■ あなたの会社</div>
+      <div style="font-weight:900;font-size:16px;margin-bottom:4px">${c.self.name}</div>
+      <div class="row"><b>事業</b><span>${c.self.business}</span></div>
+      <div class="row"><b>規模</b><span>${c.self.scale}</span></div>
+      <div class="row"><b>待遇</b><span>${c.self.treat}</span></div>
+      <div class="row"><b>社風</b><span>${c.self.culture}</span></div>
+      <div class="row"><b>選考</b><span>${c.self.flow}</span></div>
+    </div>
+    <div class="card lift">
+      <div class="sect-t" style="color:#d32f2f">■ 競合他社</div>
+      ${c.rivals.map(r=>`<div style="margin-bottom:8px"><b style="font-size:14px">${r.name}</b>
+        <span class="tag" style="background:#fce4ec;color:#c2185b">${r.tag}</span>
+        <div class="muted" style="font-size:13px;margin-top:2px">${r.desc}</div></div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="sect-t" style="color:#555">■ ルール</div>
+      <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.9;color:#555">
+        <li><b>${STAGES.length}ステージ×各${TPS}ターン（計${TOTAL_TURNS}ターン）</b>で内定承諾を目指す</li>
+        <li>1ターン＝1回の声かけ。<b>チャンスは${TOTAL_TURNS}回だけ</b></li>
+        <li>制限時間 <b>${Math.floor(CFG.turnSeconds/60)}分/ターン</b>。⏰<b>時間切れは「放置」扱いで大幅マイナス</b>（書きかけは自動送信）</li>
+        <li>志望度スコアはプレイ中<b>非公開</b>（温度感のみ）。結果発表で全公開</li>
+        <li>承諾ライン${THRESHOLD}点到達で内定承諾。参加者全員でランキング</li>
+      </ul>
+    </div>
+    <button class="btn-primary press" onclick="goStage(0)">Stage 1 へ ▶</button>
+  </div></div>`;
+}
+
+function goStage(i){
+  S.stageIdx=i; S.turnIdx=0; S.stageStartScore=S.score;
+  S.screen='stageIntro'; render();
+}
+function renderStageIntro(){
+  const st=STAGES[S.stageIdx];
+  const mi=moodIndex(S.score), m=MOODS[mi];
+  const first = S.stageIdx===0;
+  app.innerHTML=`<div class="intro screen"><div class="inner">
+    <div class="num">STAGE ${st.id} / ${STAGES.length}</div>
+    <div class="big">${st.id}</div>
+    <div class="bar"></div>
+    <h2>${st.title}</h2>
+    <div class="sub">${st.sub}　—　全${TPS}ターン</div>
+    <div class="brief">${st.intro}</div>
+    <div class="state">
+      <div class="e">${m.em}</div>
+      <div>
+        <div class="t">${first?'面談スタート時点の学生の様子':'現在の学生の温度感'}</div>
+        <div class="v">${m.label}</div>
+      </div>
+    </div>
+    <div class="meta">⏱ 相談時間 ${Math.floor(CFG.turnSeconds/60)}分/ターン　｜　⚠️ 時間切れは放置扱い</div>
+    <button class="btn-primary press" onclick="startStage()">面談を始める ▶</button>
+  </div></div>`;
+}
+function startStage(){
+  if(S.stageIdx===0){ S.score=PERSONA.initialScore; S.log=[]; S.history=[]; S.stageStartScore=S.score; S.saved=false; }
+  pushScene(true);
+  S.screen='play'; render();
+}
+function pushScene(stageOpen){
+  const st=STAGES[S.stageIdx],t=st.turns[S.turnIdx];
+  S.log.push({type:'scene',stage:st,turn:t,stageOpen});
+}
+function pipsHTML(){
+  return STAGES.map((s,i)=>`<div class="pipgroup"><span class="lbl">S${s.id}</span>${
+    Array.from({length:TPS},(_,j)=>{const g=i*TPS+j,cur=globalTurn();
+      return `<span class="pip ${g<cur?'done':g===cur?'now':''}"></span>`}).join('')}</div>`).join('');
+}
+function headHTML(){
+  const st=STAGES[S.stageIdx];
+  return `Stage ${st.id}/${STAGES.length} ・ ターン ${S.turnIdx+1}/${TPS}<small>${st.title}｜${st.sub}</small>`;
+}
+
+function renderPlay(){
+  app.innerHTML=`
+  <div class="meeting screen">
+    <div class="m-head">
+      <div class="stg">${headHTML()}</div>
+      <div class="pips">
+        ${S.offline?'<span class="offline-badge">⚡ オフライン</span>':''}
+        ${pipsHTML()}
+        <button class="info-btn press" onclick="S.drawer=true;syncDrawer()">📋 学生情報</button>
+      </div>
+    </div>
+    <div class="stage-panel">
+      <div class="scene" id="scene"></div>
+      <div class="seat">
+        <div class="avatar" id="avatar">🧑‍🎓</div>
+        <div class="who">
+          <div class="nm">${PERSONA.public.name}<span class="timer" id="timer" style="float:right">–</span></div>
+          <div class="mood" id="moodlabel"></div>
+          <div class="tempbar" id="tempbar">${MOODS.map(()=>'<div class="seg"><div class="fill"></div></div>').join('')}</div>
+          <div class="temp-note">温度感（数値は結果発表で公開）</div>
+        </div>
+      </div>
+      <div class="togaki" id="togaki"></div>
+    </div>
+    <div class="log" id="log"></div>
+    <div class="composer">
+      <div class="lbl">あなたの発言（面談中）</div>
+      <div class="chips" id="chips">
+        ${ACTIONS.map(a=>`<button class="chip ${S.action===a?'on':''}" data-a="${a}" onclick="toggleAction('${a}')">${a}</button>`).join('')}
+      </div>
+      <div class="field">
+        <textarea id="input" rows="2" maxlength="400" placeholder="学生に何と声をかける？"></textarea>
+        <button class="send press" id="send" onclick="onSend()">➤</button>
+      </div>
+      <div class="cnt"><span id="cnt">0</span>/400</div>
+    </div>
+  </div>
+  <div class="drawer-ov" id="dov" onclick="S.drawer=false;syncDrawer()"></div>
+  <div class="drawer" id="drawer">
+    <div class="dh"><span>📋 攻略対象の学生</span><button onclick="S.drawer=false;syncDrawer()">×</button></div>
+    <div class="body">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:6px">
+        <div class="avatar" style="width:48px;height:48px;font-size:26px;background:#e8eef1">🧑‍🎓</div>
+        <div><div style="font-weight:900;font-size:16px">${PERSONA.public.name}</div><div class="muted" style="font-size:11px">公開プロフィール</div></div>
+      </div>
+      <div class="row"><b>大学・学年</b><span>${PERSONA.public.university} / ${PERSONA.public.grade}</span></div>
+      <div class="row"><b>志望業界</b><span>${PERSONA.public.industries}</span></div>
+      <div class="row"><b>就活の軸</b><span>${PERSONA.public.axis}</span></div>
+      <div class="sect-t">■ 自社</div>
+      <div class="row"><b>会社</b><span>${COMPANY.self.name}</span></div>
+      <div class="row"><b>待遇</b><span>${COMPANY.self.treat}</span></div>
+      <div class="row"><b>社風</b><span>${COMPANY.self.culture}</span></div>
+      <div class="sect-t" style="color:#d32f2f">■ 競合</div>
+      ${COMPANY.rivals.map(r=>`<div style="margin-bottom:6px;font-size:13px"><b>${r.name}</b> <span class="tag" style="background:#fce4ec;color:#c2185b">${r.tag}</span><div class="muted">${r.desc}</div></div>`).join('')}
+      <div class="hintbox" style="margin-top:10px">本音・地雷は非公開。面談の反応から推理しよう。</div>
+    </div>
+  </div>`;
+  const logEl=document.getElementById('log');
+  S.log.forEach(m=>logEl.appendChild(logNode(m)));
+  bindInput();setTurnHeader();updateMood(false);startTimer();
+  logEl.scrollTop=logEl.scrollHeight;
+}
+
+function bindInput(){
+  const ta=document.getElementById('input'),cnt=document.getElementById('cnt');
+  if(!ta)return;
+  ta.value=S.input; ta.disabled=false;
+  ta.oninput=()=>{S.input=ta.value;cnt.textContent=ta.value.length;};
+  cnt.textContent=ta.value.length;
+  ta.focus();
+}
+function toggleAction(a){
+  if(S.busy||S.timedOut)return;
+  S.action=S.action===a?'':a;
+  document.querySelectorAll('#chips .chip').forEach(c=>c.classList.toggle('on',c.dataset.a===S.action));
+}
+function setTurnHeader(){
+  const st=STAGES[S.stageIdx],t=st.turns[S.turnIdx];
+  document.getElementById('scene').textContent='📍 '+t.scene;
+  document.querySelector('.m-head .stg').innerHTML=headHTML();
+  document.querySelectorAll('.m-head .pipgroup').forEach((g,i)=>{
+    g.querySelectorAll('.pip').forEach((p,j)=>{const gt=i*TPS+j,cur=globalTurn();
+      p.className='pip '+(gt<cur?'done':gt===cur?'now':'');});
+  });
+}
+function updateMood(animate){
+  const mi=moodIndex(S.score),m=MOODS[mi];
+  const av=document.getElementById('avatar'),ml=document.getElementById('moodlabel');
+  if(!av)return;
+  av.textContent=['😨','😕','🧑‍🎓','🙂','😊'][mi];
+  ml.textContent=m.em+' '+m.label;ml.style.color=m.color;
+  if(animate){av.classList.remove('pulse');void av.offsetWidth;av.classList.add('pulse');}
+  document.querySelectorAll('#tempbar .seg .fill').forEach((f,i)=>{
+    f.style.width=i<=mi?'100%':'0%';f.style.background=m.color;});
+}
+function setTogaki(txt){const t=document.getElementById('togaki');if(!t)return;
+  t.textContent=txt;t.classList.remove('show');void t.offsetWidth;t.classList.add('show');}
+
+function startTimer(){
+  S.timeLeft=CFG.turnSeconds; S.timedOut=false;
+  const el=document.getElementById('timer'); if(!el) return;
+  const paint=()=>{
+    const mm=Math.floor(S.timeLeft/60), ss=String(S.timeLeft%60).padStart(2,'0');
+    el.textContent=`${mm}:${ss}`;
+    el.classList.toggle('warn', S.timeLeft<=CFG.warnSeconds && S.timeLeft>15);
+    el.classList.toggle('low',  S.timeLeft<=15);
+  };
+  paint();
+  clearInterval(S.timerId);
+  S.timerId=setInterval(()=>{
+    if(S.timeLeft>0){ S.timeLeft--; paint(); }
+    if(S.timeLeft===0){ clearInterval(S.timerId); onTimeUp(); }
+  },1000);
+}
+function onTimeUp(){
+  if(S.busy || S.timedOut) return;
+  S.timedOut=true;
+  const el=document.getElementById('timer');
+  if(el){ el.textContent='時間切れ'; el.className='timer low'; }
+  const logEl=document.getElementById('log');
+  const nt=document.createElement('div');
+  nt.className='notice';
+  nt.innerHTML=`<span>⏰ 時間切れ${CFG.autoSubmitOnTimeout?'　—　自動で送信します':''}</span>`;
+  logEl.appendChild(nt); logEl.scrollTop=logEl.scrollHeight;
+
+  if(!CFG.autoSubmitOnTimeout){ S.timedOut=false; return; }
+  const ta=document.getElementById('input');
+  if(ta) ta.disabled=true;
+  document.getElementById('send').disabled=true;
+  const msg=(S.input||'').trim();
+  setTimeout(()=>{
+    if(msg){ submitTurn(msg, S.action, false); }
+    else   { submitTurn('', S.action, true); }
+  }, 900);
+}
+
+function onSend(){
+  if(S.busy)return;
+  const msg=(S.input||'').trim();if(!msg)return;
+  submitTurn(msg, S.action, false);
+}
+function submitTurn(msg, action, timedOut){
+  clearInterval(S.timerId);
+  const logEl=document.getElementById('log');
+  const you={type:'you',text: msg||TIMEOUT_MSG, action, timedOut};
+  S.log.push(you); logEl.appendChild(logNode(you));
+  S.input=''; S.action='';
+  const ta=document.getElementById('input'); if(ta){ ta.value=''; }
+  const cnt=document.getElementById('cnt'); if(cnt) cnt.textContent='0';
+  document.querySelectorAll('#chips .chip').forEach(c=>c.classList.remove('on'));
+  logEl.scrollTop=logEl.scrollHeight;
+  S.pending={msg,action,timedOut};
+  runTurn(msg,action,false,timedOut);
+}
+function retryTurn(){ if(!S.pending)return; clearTmp(); runTurn(S.pending.msg,S.pending.action,false,S.pending.timedOut); }
+function continueOffline(){ if(!S.pending)return; clearTmp(); S.offline=true; runTurn(S.pending.msg,S.pending.action,true,S.pending.timedOut); }
+
+async function runTurn(msg,action,forceOffline,timedOut){
+  const logEl=document.getElementById('log');
+  S.busy=true;
+  const sendBtn=document.getElementById('send'); if(sendBtn) sendBtn.disabled=true;
+  const tnode=logNode({type:'typing'}); logEl.appendChild(tnode); logEl.scrollTop=logEl.scrollHeight;
+
+  let r=null,err=null;
+  if(CFG.useAI && !forceOffline && !S.offline){
+    for(let attempt=0; attempt<2 && !r; attempt++){
+      try{ r=await callStudent(msg,action,timedOut); err=null; }
+      catch(e){ err=String(e.message||e); if(attempt===0) await sleep(400); }
+    }
+  } else {
+    await sleep(700);
+    r=offlineEngine(msg,action,S.stageIdx,timedOut);
+  }
+  clearTmp();
+  if(!r){
+    logEl.appendChild(logNode({type:'error',detail:err}));
+    logEl.scrollTop=logEl.scrollHeight;
+    S.busy=false;
+    const sb=document.getElementById('send'); if(sb) sb.disabled=false;
+    return;
+  }
+  applyResult(msg,action,r,timedOut);
+}
+
+function applyResult(msg,action,r,timedOut){
+  const logEl=document.getElementById('log');
+  S.score=Math.max(0,Math.min(100,S.score+r.delta));
+  const dir=r.delta>0?'温度が上がった':r.delta<0?'温度が下がった':'温度は横ばい';
+  const sm={type:'student',text:r.reply,kind:r.kind,dir};
+  S.log.push(sm);logEl.appendChild(logNode(sm));
+  setTogaki(r.togaki);updateMood(true);
+  logEl.scrollTop=logEl.scrollHeight;
+  S.history.push({stageIdx:S.stageIdx,turnIdx:S.turnIdx,
+    label:STAGES[S.stageIdx].turns[S.turnIdx].label, message: msg||TIMEOUT_MSG, action, timedOut,
+    reply:r.reply,delta:r.delta,reason:r.reason,inner:r.inner,ng:r.ng,
+    scoreAfter:S.score,kind:r.kind});
+  S.pending=null; S.busy=false; S.timedOut=false;
+  const sb=document.getElementById('send'); if(sb) sb.disabled=false;
+
+  if(S.turnIdx < TPS-1){
+    S.turnIdx++;
+    setTimeout(()=>{
+      pushScene(false);
+      logEl.appendChild(logNode(S.log[S.log.length-1]));
+      setTurnHeader(); startTimer(); bindInput();
+      logEl.scrollTop=logEl.scrollHeight;
+    },700);
+  } else {
+    clearInterval(S.timerId);
+    setTimeout(()=>{S.screen='report';render();},900);
+  }
+}
+
+function logNode(m){
+  const d=document.createElement('div');
+  if(m.type==='scene'){
+    d.className='scene-div';const st=m.stage,t=m.turn;
+    d.innerHTML=`<span class="line"></span><span class="txt">${m.stageOpen?`Stage ${st.id}　${st.title}｜`:''}${t.label}</span><span class="line"></span>`;
+    return d;
+  }
+  if(m.type==='you'){
+    d.className='turn-row you';
+    d.innerHTML=`<div class="who">${esc(S.name)}（人事）</div>
+      ${m.action&&m.action!=='（発言のみ）'&&!m.timedOut?`<div class="act-chip">🎬 ${esc(m.action)}</div><br>`:''}
+      <div class="linecard ${m.timedOut?'to':''}">${esc(m.text)}</div>`;
+    return d;
+  }
+  if(m.type==='typing'){
+    d.className='turn-row student';d.dataset.tmp='1';
+    d.innerHTML=`<div class="who">${PERSONA.public.name}</div><div class="typing"><i></i><i></i><i></i></div>`;
+    return d;
+  }
+  if(m.type==='error'){
+    d.className='errbox';d.dataset.tmp='1';
+    d.innerHTML=`⚠️ AI応答に失敗しました。ネットワークをご確認ください。
+      <div class="acts">
+        <button class="retry press" onclick="retryTurn()">🔄 もう一度送る</button>
+        <button class="off press" onclick="continueOffline()">⚡ オフラインで続行</button>
+      </div>
+      <div class="det">${esc(m.detail||'')}</div>`;
+    return d;
+  }
+  const R=REACT[m.kind]||REACT.flat;
+  d.className='turn-row student';
+  d.innerHTML=`<div class="who">${PERSONA.public.name}</div>
+    <div class="linecard">${esc(m.text)}</div>
+    <br><span class="reaction" style="background:${R.bg};color:${R.fg}">${R.icon} ${R.label}<span style="opacity:.7">・${esc(m.dir)}</span></span>`;
+  return d;
+}
+function clearTmp(){document.querySelectorAll('#log [data-tmp]').forEach(n=>n.remove());}
+
+function renderReport(){
+  const st=STAGES[S.stageIdx];
+  const turns=S.history.filter(h=>h.stageIdx===S.stageIdx);
+  const startMi=moodIndex(S.stageStartScore),endMi=moodIndex(S.score);
+  const gained=S.score-S.stageStartScore;
+  const sorted=[...turns].sort((a,b)=>b.delta-a.delta);
+  const best=sorted[0],worst=sorted[sorted.length-1];
+  const differ=best&&worst&&best!==worst&&best.delta!==worst.delta;
+  const hadNg=turns.some(t=>t.ng&&t.ng.length);
+  const hadTO=turns.some(t=>t.timedOut);
+  const isLast=S.stageIdx===STAGES.length-1;
+  const kokoro=endMi>=3?'心を開きはじめ、前向きに検討してくれている。'
+    :endMi===2?'まだ様子見。決め手を欲しがっている。':'警戒が残る。信頼の再構築が必要。';
+  app.innerHTML=`<div class="report screen"><div class="wrap" style="max-width:560px">
+    <div class="badge">中間報告 ${st.id}/${STAGES.length}</div>
+    <h2 style="font-weight:900;margin:0 0 2px">${st.title}｜総括</h2>
+    <p class="muted" style="margin:0 0 14px;font-size:13px">${st.sub}</p>
+    <div class="card">
+      <div class="muted" style="font-size:12px;font-weight:800;text-align:center">このステージでの温度の推移</div>
+      <div class="trend"><span>${MOODS[startMi].em}</span><span class="arrow">→</span><span>${MOODS[endMi].em}</span></div>
+      <div style="text-align:center;font-weight:900;color:${gained>0?'var(--green)':gained<0?'var(--red)':'var(--sub)'}">
+        ${MOODS[startMi].label} → ${MOODS[endMi].label}　${gained>0?'▲ 上昇':gained<0?'▼ 低下':'— 横ばい'}</div>
+    </div>
+    <div class="card">
+      <div class="rep-item"><span class="ic">✅</span><div><b>よかった対応</b><br>
+        <span class="muted">「${clip(best.message,32)}」</span><br>${esc(best.reason)}</div></div>
+      ${differ?`<div class="rep-item"><span class="ic">🔧</span><div><b>もったいなかった点</b><br>
+        <span class="muted">「${clip(worst.message,32)}」</span><br>${esc(worst.reason)}</div></div>`:''}
+      <div class="rep-item"><span class="ic">🧠</span><div><b>学生の今の心境（読み）</b><br>${kokoro}
+        ${hadNg?'<br><span style="color:#c62828">⚠️ 地雷を踏んだ場面あり。挽回が必要。</span>':''}
+        ${hadTO?'<br><span style="color:#c62828">⏰ 時間切れによる放置が発生。信頼を大きく損ねた。</span>':''}</div></div>
+    </div>
+    <button class="btn-primary press" onclick="${isLast?"S.screen='result';render()":'goStage('+(S.stageIdx+1)+')'}">${isLast?'結果を見る 🎉':'Stage '+(st.id+1)+' へ ▶'}</button>
+  </div></div>`;
+}
+
+function renderResult(){
+  const final=S.score,ok=final>=THRESHOLD;
+  if(!S.saved){ S.saved=true; saveScore(); }
+  app.innerHTML=`<div class="result screen">
+    ${ok?confetti():''}
+    <div class="wrap" style="max-width:620px;position:relative;z-index:6">
+      <div class="res-hero ${ok?'ok':'ng'}">
+        <div class="em">${ok?'🎉':'💔'}</div>
+        <div style="font-size:24px;font-weight:900;margin-top:4px">${ok?'内定承諾！':'辞退…'}</div>
+        <div style="font-size:12px;opacity:.85;margin-top:2px">${esc(S.name)}</div>
+        <div class="quote">「${ok
+          ?'正直たくさん迷いましたが、最後まで私のことを一番考えてくれたのはブライトキャリアさんでした。お世話になります！'
+          :'色々ありがとうございました。悩んだ末、別の会社に決めました。ごめんなさい。'}」</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+          <div style="font-weight:900;font-size:14px;color:#555">志望度スコアの推移（ここで初公開）</div>
+          <div style="font-size:30px;font-weight:900;color:${ok?'var(--green)':'#c62828'}">${final}<span style="font-size:13px">/100</span></div>
+        </div>
+        ${lineChart()}
+      </div>
+      <div class="card">
+        <div style="font-weight:900;font-size:14px;color:#555;margin-bottom:2px">ステージ別フィードバック</div>
+        ${STAGES.map(st=>{
+          const hs=S.history.filter(h=>h.stageIdx===st.id-1);
+          if(!hs.length)return '';
+          return `<div class="fb-stage">Stage ${st.id}｜${st.title}</div>`+hs.map(h=>`
+            <div class="fb">
+              <div class="top"><span class="tt">${h.label}${h.timedOut?' ⏰':''}</span>
+                <span class="dl" style="color:${h.delta>0?'var(--green)':h.delta<0?'var(--red)':'var(--sub)'}">${h.delta>0?'+':''}${h.delta}</span></div>
+              <div class="said"><span class="muted">あなた：</span>${esc(h.message)}${h.action&&h.action!=='（発言のみ）'&&!h.timedOut?`（${esc(h.action)}）`:''}</div>
+              <div class="rz">💡 ${esc(h.reason)}</div>
+              <div class="in">🗨 本音：${esc(h.inner)}</div>
+              ${h.ng&&h.ng.length?`<div class="ng">⚠️ NG行動：${h.ng.map(esc).join(' / ')}</div>`:''}
+            </div>`).join('');
+        }).join('')}
+      </div>
+      <div style="display:flex;gap:12px">
+        <button class="btn-primary press" style="flex:1" onclick="S.screen='ranking';render()">全体ランキングへ 🏆</button>
+        <button class="btn-ghost press" onclick="reset()">やり直す</button>
+      </div>
+    </div>
+  </div>`;
+}
+function lineChart(){
+  const pts=[{s:PERSONA.initialScore,d:0},...S.history.map(h=>({s:h.scoreAfter,d:h.delta}))];
+  const W=560,H=200,padL=8,padR=8,padT=18,padB=24;
+  const maxX=Math.max(1,pts.length-1);
+  const x=i=>padL+(W-padL-padR)*(i/maxX);
+  const y=v=>H-padB-(H-padT-padB)*(v/100);
+  const path=pts.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p.s).toFixed(1)}`).join(' ');
+  const thY=y(THRESHOLD);
+  const bands=STAGES.map((st,i)=>{
+    const a=i*TPS,b=(i+1)*TPS;
+    if(a>maxX)return '';
+    const x1=x(a),x2=x(Math.min(b,maxX));
+    return `<rect x="${x1}" y="${padT}" width="${x2-x1}" height="${H-padT-padB}" fill="${i%2?'#f7f9fa':'#fdfdfd'}"/>
+      <text x="${(x1+x2)/2}" y="${padT-5}" font-size="10" fill="#aaa" text-anchor="middle" font-weight="700">Stage ${st.id}</text>`;
+  }).join('');
+  const dots=pts.map((p,i)=>{
+    const c=i===0?'#bbb':p.d>0?'#06C755':p.d<0?'#E5484D':'#bbb';
+    return `<circle cx="${x(i)}" cy="${y(p.s)}" r="5" fill="${c}" stroke="#fff" stroke-width="1.5"/>`;
+  }).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    ${bands}
+    ${[0,25,50,75,100].map(g=>`<line x1="${padL}" x2="${W-padR}" y1="${y(g)}" y2="${y(g)}" stroke="#eee"/>`).join('')}
+    <line x1="${padL}" x2="${W-padR}" y1="${thY}" y2="${thY}" stroke="#f5a623" stroke-dasharray="5 4"/>
+    <text x="${W-padR-2}" y="${thY-5}" fill="#f5a623" font-size="11" text-anchor="end">承諾ライン ${THRESHOLD}</text>
+    <path d="${path}" fill="none" stroke="#06C755" stroke-width="3" stroke-linejoin="round"/>
+    ${dots}
+    <text x="${x(0)}" y="${H-6}" font-size="10" fill="#999" text-anchor="start">開始</text>
+    <text x="${x(maxX)}" y="${H-6}" font-size="10" fill="#999" text-anchor="end">最終</text>
+  </svg>`;
+}
+function confetti(){
+  const cols=['#06C755','#ffd700','#ff6b9d','#4dabf7','#ffa94d','#b197fc'];
+  let s='<div class="confetti-pieces">';
+  for(let i=0;i<70;i++){const l=Math.random()*100,c=cols[i%cols.length],
+    d=(2.4+Math.random()*2.4).toFixed(2),dl=(Math.random()*0.9).toFixed(2),
+    r=Math.random()>.5?'50%':'2px';
+    s+=`<i style="left:${l}%;background:${c};border-radius:${r};animation-duration:${d}s;animation-delay:${dl}s"></i>`;}
+  return s+'</div>';
+}
+
+function renderRanking(){
+  app.innerHTML=`<div class="rank screen"><div class="inner">
+    <h2 style="color:#fff;text-align:center;font-weight:900;margin:0 0 2px">🏆 最終ランキング</h2>
+    <p style="text-align:center;color:#aaa;font-size:13px;margin:0 0 6px">内定承諾者 → 志望度スコア順</p>
+    <div class="count" id="rcount"></div>
+    <div id="rankbody"><div class="spin">📡 参加者のスコアを取得中…</div></div>
+    <div class="tools">
+      <button class="btn-primary press" style="width:auto" onclick="refreshRanking()">🔄 更新</button>
+      <button class="btn-ghost press" onclick="reset()">もう一度プレイ</button>
+      <button class="btn-ghost press" style="color:#c62828" onclick="wipeRanking()">🗑 記録を全消去（運営用）</button>
+    </div>
+    <p class="note">※ランキングは参加者全員で共有されています。<br>リハーサルのダミー記録は本番前に「記録を全消去」してください。</p>
+  </div></div>`;
+  refreshRanking();
+}
+async function refreshRanking(){
+  const box=document.getElementById('rankbody');
+  const cnt=document.getElementById('rcount');
+  if(!box) return;
+  box.innerHTML=`<div class="spin">📡 参加者のスコアを取得中…</div>`;
+  if(cnt) cnt.textContent='';
+  const rows = await loadScores();
+
+  if(rows===null){
+    box.innerHTML=`<div class="spin" style="color:#e6a">⚠️ 共有ランキングを利用できない環境です。自分の結果のみ表示します。</div>`
+      + rankRow({name:S.name, score:S.score, ok:S.score>=THRESHOLD}, 0, true);
+    return;
+  }
+  const done = rows.sort((a,b)=>(b.ok-a.ok)||(b.score-a.score));
+  if(cnt){
+    const okCount = done.filter(r=>r.ok).length;
+    cnt.textContent = done.length ? `参加 ${done.length}人　/　内定承諾 ${okCount}人` : '';
+  }
+  box.innerHTML = done.length
+    ? done.map((r,i)=>rankRow(r,i,r.name===S.name)).join('')
+    : `<div class="spin">まだ誰も面談を終えていません。</div>`;
+}
+function rankRow(r,i,isYou){
+  const m=MOODS[moodIndex(r.score)], win=i===0;
+  const medal = i===0?'👑' : i===1?'🥈' : i===2?'🥉' : (i+1);
+  return `<div class="rrow ${isYou?'you':''}" style="animation-delay:${Math.min(i,10)*0.07}s">
+    <div class="pos" style="${isYou?'color:#fff':win?'color:#c9a400':''}">${medal}</div>
+    <div class="em">${m.em}</div>
+    <div class="nm">${esc(r.name)}${isYou?'（あなた）':''}<div style="font-size:11px;font-weight:700;opacity:.8">${m.label}</div></div>
+    <div class="sc">${r.score}<div style="font-size:11px;font-weight:800;color:${r.ok?(isYou?'#c8f7d4':'var(--green)'):(isYou?'#ffcdd2':'#c62828')}">${r.ok?'✅ 承諾':'❌ 辞退'}</div></div>
+  </div>`;
+}
+async function wipeRanking(){
+  if(!confirm('全参加者のランキング記録を消去します。よろしいですか？')) return;
+  await clearScores();
+  refreshRanking();
+}
+
+function syncDrawer(){
+  const dv=document.getElementById('dov'),dr=document.getElementById('drawer');
+  if(!dv||!dr)return;
+  dv.classList.toggle('open',S.drawer);dr.classList.toggle('open',S.drawer);
+}
+render();
+</script>
+</body>
 </html>
