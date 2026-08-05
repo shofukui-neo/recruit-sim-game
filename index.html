@@ -249,6 +249,17 @@ svg.chart{width:100%;height:auto;display:block}
 .fb .rz{font-size:13px;background:#f6f9fa;border-radius:10px;padding:7px 10px;margin:3px 0}
 .fb .in{font-size:13px;font-style:italic;color:#8e44ad}
 .fb .ng{font-size:12px;color:#c62828;margin-top:3px}
+
+/* 模範解答。自分の発言と並べて「どう書けばよかったか」を見せる */
+.model{background:#f2fbf5;border:1px solid #cdead9;border-radius:14px;padding:12px 13px;margin-top:12px}
+.model .mh{font-size:12px;font-weight:900;color:#0b7a45;margin-bottom:2px}
+.model .msub{font-size:11px;color:#6f8a7c;line-height:1.6;margin-bottom:8px}
+.model .mi{padding:9px 0;border-top:1px dashed #cdead9}
+.model .mi:first-of-type{border-top:none;padding-top:2px}
+.model .rn{display:inline-block;font-size:10.5px;font-weight:900;color:#fff;background:#0b7a45;border-radius:6px;padding:2px 8px;margin-bottom:5px}
+.model .mt{font-size:13.5px;line-height:1.85;background:#fff;border-radius:10px;padding:9px 11px}
+.model .mw{font-size:12.5px;line-height:1.75;color:#4a6b5a;margin-top:6px}
+.model .mw b{color:#0b7a45}
 .confetti-pieces{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5}
 .confetti-pieces i{position:absolute;top:-10px;width:8px;height:12px;animation:confettiFall linear forwards}
 
@@ -267,6 +278,30 @@ svg.chart{width:100%;height:auto;display:block}
 .rank .note{color:#888;font-size:11px;margin-top:14px;text-align:center;line-height:1.7}
 .rank .count{text-align:center;color:#7fd6a5;font-size:12px;font-weight:800;margin-bottom:16px}
 .spin{color:#aaa;text-align:center;padding:30px;font-size:14px}
+
+/* ============================================================
+   作戦会議：左右見開きレイアウト
+   カード5枚を縦積みにすると1画面に収まらず、読む前にスクロールで疲れる。
+   広い画面では「左ページ＝攻略対象の学生 / 右ページ＝自社・競合・ルール」に割り、
+   中央に綴じ目の罫線を入れて見開きだと一目でわかるようにする。
+   狭い画面（〜900px）では従来どおり1カラムに戻る。
+   ============================================================ */
+.wrap.spread{max-width:760px}
+.spread-grid{display:grid;gap:0}
+.page{min-width:0}
+.spread-foot{margin:0 auto}
+@media (min-width:901px){
+  .wrap.spread{max-width:1120px}
+  .spread-grid{grid-template-columns:1fr 1fr;gap:0 30px}
+  .spread-grid>.page+.page{border-left:1px solid #e5ebee;padding-left:30px}
+  /* 見開きでは高さが勝負。カード内の余白と行間を少しだけ詰める */
+  .spread .card{padding:18px}
+  .spread .card>.sect-t:first-child{margin-top:0}
+  .spread .rulelist{line-height:1.75}
+  /* 左右の下端を揃えるため、各ページ末尾のカードの下余白は開始ボタン側に集約する */
+  .spread .page>.card:last-child{margin-bottom:0}
+  .spread-foot{max-width:420px;margin-top:20px}
+}
 
 /* ============================================================
    スマートフォン最適化
@@ -402,6 +437,7 @@ const CFG = {
   timeoutMs: 30000,
   room: 'mochica0722',
 };
+// 1ステージあたりのラリー数（＝プレイヤーが発言できる回数）。1ステージ＝1場面を2往復する。
 const TPS = 2;
 const NAME_MAX = 12;
 // AI呼び出しの最大試行回数（初回 + 再試行2回）。サーバー側でも再試行するので、ここは控えめに。
@@ -444,37 +480,68 @@ const PHASES = [
   { key:'final',  label:'最終面接', icon:'🎯' },
   { key:'offer',  label:'内定',     icon:'🎉' },
 ];
-// 各ターンの ch は接触チャネル。'line' はテキストのみで勝負する場面で、
+// 1ステージ＝1場面。その中で2ラリー（往復）やり取りする。
+// 場面は学生の第一声(opening)から始まり、プレイヤーが返す → 学生が返す → もう1往復、という流れ。
+// ch は接触チャネル。'line' はテキストのみで勝負する場面で、
 // 対面と違って表情や間で補えないぶん、文面の質がそのまま評価に出る。
+// model は結果総括で開示する模範解答。ラリーごとに「何を言うか」と「なぜ効くか」を持つ。
 const STAGES = [
   { id:1, title:'出会い・信頼づくり', sub:'序盤 — 関係構築',
     intro:'説明会で出会った佐藤さんは、まだあなたの会社を「候補のひとつ」としか見ていない。ここで信頼を勝ち取れなければ、後半で何を言っても届かない。まずは「この人になら本音を話せる」と思ってもらうことが全て。',
-    turns:[
-      { label:'説明会後の初回LINE', phase:0, ch:'line',
-        scene:'会社説明会の翌日。熱心にメモを取っていた佐藤さんとLINEが繋がった。まだ志望度は高くない。最初の一通で印象が決まる。' },
-      { label:'軸のヒアリングと動機づけ', phase:0, ch:'meet',
-        scene:'就活で大事にしていることを聞き出しつつ、一次面接へ背中を押す場面。不安と期待が入り混じっている。' },
+    label:'説明会後の初回LINE', phase:0, ch:'line',
+    scene:'会社説明会の翌日。熱心にメモを取っていた佐藤さんとLINEが繋がり、向こうから1通目が届いた。まだ志望度は高くない。ここでの2往復で印象が決まる。',
+    opening:'昨日はありがとうございました！お話とても面白かったです。またよろしくお願いします🙇‍♀️',
+    rallies:[
+      { aim:'まずは「ちゃんと自分を見てくれている」と思わせる。ESの具体に触れられるか。' },
+      { aim:'返ってきた反応を受けて、不安に手当てしつつ一次面接へ背中を押す。' },
+    ],
+    model:[
+      { text:'佐藤さん、昨日はお越しいただきありがとうございました。ESのカフェでの新人教育のお話、マニュアルを作り直して半年で離職を3割減らしたというのが強く印象に残っています。「相手の困りごとを見つける」というPRと地続きなんだなと。うちの仕事もまさにそこが起点なので、佐藤さんの話をもう少し伺いたいです。',
+        why:'ESの固有名詞（マニュアル改訂・離職3割減）を具体的に引用し、自己PRと繋げている。誰にでも送れる文面になっていないのがポイント。LINEなので長すぎず、最後を「聞きたい」で締めて返信しやすくしている。' },
+      { text:'「忙しすぎて続けられないのでは」という不安、正直だと思います。うちは平均残業30h・リモート週2ですが、数字より実際どうかが気になりますよね。同じ文系出身で3年目の社員が、入社直後にかなり苦戦した話も含めて話せます。来週の一次面接の前に、15分だけ繋ぎましょうか。決めるのはその後で大丈夫です。',
+        why:'ESに書かれた不安をそのまま引用して逃げずに扱う。数字を出しつつ「数字より実際が気になりますよね」と先回りし、失敗談を持つ社員を提示（刺さるポイント）。最後に「決めるのはその後で」と意思決定を委ねて圧をかけない。' },
     ]},
   { id:2, title:'深耕・動機づけ', sub:'中盤 — 志望度を育てる',
-    intro:'一次面接を通過し、距離は少し縮まった。しかしこのステージの終わりに、佐藤さんから「他社から内定が出た」という連絡が入る。それまでにどれだけ志望度を積み上げられているかが、後半の生死を分ける。',
-    turns:[
-      { label:'一次面接後のフォロー', phase:1, ch:'meet',
-        scene:'一次面接を通過。手応えはあったが少し不安そう。現場のリアルを見せて志望度を一段引き上げたい場面。' },
-      { label:'「他社から内定」の一報', phase:1, ch:'meet',
-        scene:'「メガ・ホールディングスさんから内定をいただきました。正直迷っています」と打ち明けられた。' },
+    intro:'一次面接を通過し、距離は少し縮まった。しかしこの面談の中で、佐藤さんから「他社から内定が出た」と打ち明けられる。ここまでにどれだけ志望度を積み上げられているかが、後半の生死を分ける。',
+    label:'一次面接後の面談',
+    phase:1, ch:'meet',
+    scene:'一次面接を通過し、フォローの面談。手応えはあったが少し不安そう。この2往復のどこかで、他社の内定の話が出る。',
+    opening:'一次面接、ありがとうございました。……あの、実は今日ひとつご相談したいことがあって来ました。',
+    rallies:[
+      { aim:'相談を切り出しやすい空気をつくる。急かさず、まず受け止められるか。' },
+      { aim:'「メガ・ホールディングスから内定」を聞いた上で、否定せず比較軸を一緒に整理できるか。' },
+    ],
+    model:[
+      { text:'こちらこそありがとうございました。面接で話してくれた、新人が辞めていくのを見て「自分にできることがあるはず」と思ったという話、面接官もすごく良かったと言っていました。……相談、ぜひ聞かせてください。急ぎませんし、言いにくい話でも構いません。',
+        why:'まず面接の中身を具体的に返して「見てもらえている」を作る。そのうえで「急ぎません」「言いにくい話でも」と一言添えることで、本音（＝他社内定）を出しやすくしている。ここを飛ばして自社の話を続けると、学生は言い出せないまま終わる。' },
+      { text:'メガさん、おめでとうございます。それだけ評価されたということですし、正直迷って当然だと思います。……せっかくなので、一度あの2社を並べて整理しませんか。佐藤さんの軸は「若いうちから成長できる環境」と「人の役に立つ実感」でしたよね。うちが必ず勝つとは言いません。ただ、その2つで見たときに何がどう違うかは、私がいちばん正直に説明できます。',
+        why:'他社を絶対に貶さず、まず祝う（他社批判は地雷）。「迷って当然」で迷いを正当化し、本人の軸を引用して比較のテーブルに載せる。「うちが必ず勝つとは言いません」という一歩引いた誠実さが、この学生には最も刺さる。' },
     ]},
   { id:3, title:'意思決定・クロージング', sub:'終盤 — 決断の後押し',
-    intro:'大手の内定を手にした佐藤さんは、大きく揺れている。ここで焦って囲い込めば一瞬で終わる。相手の迷いに正面から向き合い、最後は本人の意思で選んでもらえるか。残り2ターン、勝負の時。',
-    turns:[
-      { label:'他社比較と最終面接', phase:2, ch:'meet',
-        scene:'最大の山場。大手との間で揺れる気持ちに正面から向き合いつつ、最終面接へ進む意思を固めてもらう場面。' },
-      { label:'内定承諾のクロージング', phase:3, ch:'meet',
-        scene:'最終面接を通過し、内定を提示。最後の意思決定を後押しするクロージング。' },
+    intro:'最終面接を通過し、内定を提示した。しかし大手の内定を手にした佐藤さんは大きく揺れている。ここで焦って囲い込めば一瞬で終わる。最後の2往復、本人の意思で選んでもらえるか。',
+    label:'内定提示後のクロージング面談',
+    phase:3, ch:'meet',
+    scene:'最終面接を通過し、内定を提示した直後の面談。大手との間で気持ちが揺れている。最大の山場。',
+    opening:'内定、ありがとうございます。本当に嬉しいです。……ただ、すみません、すぐには決められなくて。',
+    rallies:[
+      { aim:'「すぐ決められない」の中身を、急かさずに言語化させられるか。' },
+      { aim:'迷いの正体を受けて、最後の一押し。ただし決めるのは本人、を守れるか。' },
+    ],
+    model:[
+      { text:'ありがとうございます。むしろ、すぐ決めないでほしいです。……差し支えなければ、何が引っかかっているか聞かせてもらえますか。条件のことでも、ご家族のことでも構いません。それを聞かないまま「うちに来てください」と言っても、たぶん佐藤さんのためになりません。',
+        why:'「すぐ決めないでほしい」と先に言うことで、オワハラの逆を取り警戒を解く。「ご家族のことでも」と具体的に例示することで、本人が言い出しにくい親の反対（非公開の本音）を開示しやすくしている。深掘りできなければ最後の一押しは絶対に決まらない。' },
+      { text:'ご両親が大手をと言うのは、当然だと思います。心配してくださっている証拠なので。……もしよければ、ご両親向けに事業と財務の資料をお渡しします。ご希望なら私が直接ご説明にも伺います。そのうえで、3年後にどうなっていたいかだけ、もう一度考えてみてください。佐藤さんが「ここで人の可能性を広げたい」と思えないなら、メガさんに行くのが正解です。最後は佐藤さんが決めてください。',
+        why:'親の反対を否定せず肯定してから、資料・同席という具体的な解決策を出す。そのうえで期限で縛らず、「思えないならメガが正解」と言い切ることで、囲い込みではなく意思決定の尊重（最大の刺さるポイント）を示している。ここで「今日中に返事を」と言うと一発で終わる。' },
     ]},
 ];
-const curTurn = () => STAGES[S.stageIdx].turns[S.turnIdx];
+const curTurn = () => {
+  const st = STAGES[S.stageIdx];
+  // 場面（ステージ）の情報にラリー固有の情報を重ねて1つのターンとして扱う
+  return { ...st, ...(st.rallies[S.turnIdx] || {}), rally: S.turnIdx + 1 };
+};
 const TOTAL_TURNS = STAGES.length * TPS;
-const ACTIONS = ['面談を設定','社員を紹介','オフィス見学','食事に誘う','資料を送付','（発言のみ）'];
+// アクションは「発言だけでは届かない一手」に絞る。多いと選択が作業になり、発言の中身から意識が逸れる。
+const ACTIONS = ['社員を紹介','オフィス見学','面談を設定','（発言のみ）'];
 const THRESHOLD = 75;
 const TIMEOUT_MSG = '（時間切れ・何も声をかけられなかった）';
 
@@ -570,11 +637,32 @@ function analyzeMessage(msg){
   return { flags, cap, es:esTouched(raw) };
 }
 
+// 会話履歴を場面（ステージ）ごとに区切って組み立てる。
+// 各場面は学生の第一声から始まるので、それも学生の発言として履歴に含める。
+// これが無いと2ラリー目で「直前に自分が何を言ったか」を見失い、仕切り直した返答になる。
+function historyBlock(){
+  const lines=[];
+  for(let si=0; si<=S.stageIdx; si++){
+    const s=STAGES[si], hs=S.history.filter(h=>h.stageIdx===si);
+    if(si!==S.stageIdx && !hs.length) continue;
+    lines.push(`【場面${s.id}: ${s.label}】`);
+    lines.push(`学生: ${s.opening}`);
+    hs.forEach(h=>{
+      lines.push(`人事: ${h.message}${h.action&&h.action!=='（発言のみ）'?`（${h.action}）`:''}`);
+      lines.push(`学生: ${h.reply}`);
+    });
+  }
+  return lines.join('\n');
+}
+
 function buildPrompt(msg, action, timedOut){
-  const st=STAGES[S.stageIdx], t=st.turns[S.turnIdx], p=PERSONA.public, pv=PERSONA.private, c=COMPANY;
-  const hist = S.history.length
-    ? S.history.map(h=>`人事: ${h.message}${h.action&&h.action!=='（発言のみ）'?`（${h.action}）`:''}\n学生: ${h.reply}`).join('\n')
-    : '（まだ会話なし）';
+  const st=STAGES[S.stageIdx], t=curTurn(), p=PERSONA.public, pv=PERSONA.private, c=COMPANY;
+  const hist = historyBlock();
+  // 2ラリー目は「同じ会話の続き」。仕切り直させないことがこのブロックの役目。
+  const isFirst = S.turnIdx===0;
+  const rallyBlock = isFirst
+    ? `- ラリー: 1/${TPS}（この場面の1往復目）\n  ※あなた（学生）は直前に「${st.opening}」と発言しています。プレイヤーの発言はそれへの応答です。`
+    : `- ラリー: ${S.turnIdx+1}/${TPS}（この場面の${S.turnIdx+1}往復目・同じ会話の続き）\n  ※★新しい場面として仕切り直さないこと。挨拶し直したり、初対面のような反応をしてはいけません。\n  ※直前の自分の発言と地続きの、自然な会話の続きとして返すこと。\n  ※これがこの場面の最後の往復です。会話としての区切りがつく終わり方にしてください。`;
   const timeoutBlock = timedOut ? `\n# ★重要：時間切れ（放置）\nプレイヤーは制限時間内に何も声をかけられませんでした。\n学生の側から見ると「連絡が来ないまま時間だけが過ぎた」状態です。\nこれは学生の地雷「返信の放置・遅さ」に該当します。\n放置された学生として、戸惑い・不信・気持ちの冷えを反映した反応を返し、deltaは必ずマイナス（-8〜-18程度）にしてください。\nkindは "jirai" とし、ngに「返信の放置・遅さ」を含めてください。\n` : '';
 
   const es = PERSONA.es;
@@ -588,7 +676,7 @@ function buildPrompt(msg, action, timedOut){
   const q = analyzeMessage(msg);
   const qualityBlock = (!timedOut && q.flags.length) ? `\n# ★重要：今回の発言は質に問題があります\n検出された問題: ${q.flags.join(' / ')}\n人事担当者としては手抜きの対応です。学生は「ちゃんと見てもらえていない」「テンプレ対応だ」と感じます。\n- 「理解が深まりました」「参考になりました」のような前向きな返答を絶対に返さないこと。戸惑い・素っ気なさ・当たり障りのない社交辞令にとどめること。\n- deltaは必ずマイナスにすること。kindは "miss" または "jirai" にすること。\n` : '';
 
-  return `あなたは新卒採用のコミュニケーション体験ゲームのAIエンジンです。\n下記の「学生ペルソナ」になりきって面談での発言を返し、同時に人事担当者（プレイヤー）の発言を評価します。\n\n# 学生ペルソナ\n## 公開情報（プレイヤーも見ている）\n- 氏名: ${p.name} / ${p.university} / ${p.grade}\n- 志望業界: ${p.industries}\n- 就活の軸: ${p.axis}\n## エントリーシート（説明会当日に提出済み。プレイヤーも読める）\n- 志望動機: ${es.motivation}\n- 学生時代に力を入れたこと: ${es.gakuchika}\n- 自己PR: ${es.selfPR}\n- 不安に思っていること: ${es.concern}\n## 非公開の内面（あなただけが知る。決して口に出さない）\n- 本音: ${pv.honne}\n- 刺さるポイント: ${pv.sasaru.join(' / ')}\n- 地雷（踏まれると一気に冷める）: ${pv.jirai.join(' / ')}\n- 性格: ${pv.personality}\n- 重視条件の優先度: ${pv.priority}\n\n# 企業情報\n## 自社（プレイヤーの会社）\n${c.self.name} / ${c.self.business} / ${c.self.scale} / ${c.self.treat} / 社風: ${c.self.culture} / 選考: ${c.self.flow}\n## 競合\n${c.rivals.map(r=>`${r.name}（${r.tag}）: ${r.desc}`).join('\n')}\n\n# 現在の状況\n- 選考フェーズ: ${ph.label}（${c.self.flow}）\n- Stage ${st.id}/${STAGES.length}「${st.title}」 ターン ${S.turnIdx+1}/${TPS}: ${t.label}\n- 場面: ${t.scene}\n${chBlock}\n- 全${TOTAL_TURNS}ターン中の${S.stageIdx*TPS+S.turnIdx+1}ターン目\n- 現在の志望度: ${S.score}/100（内部値。会話で数値に言及することは絶対に禁止）\n\n# これまでのやり取り\n${hist}\n\n# 今回のプレイヤーの発言\n- 発言: ${msg || '（なし）'}\n- アクション: ${action || '（発言のみ）'}\n${timeoutBlock}${qualityBlock}\n# タスク\n1. ${isLine?'LINEの返信':'対面での発言'}として、就活生らしく自然に返す（作り込みすぎない）\n   - 刺さる対応には心を開き気味に、地雷を踏まれたら素っ気なく／戸惑い気味に\n   - ★中身のない声かけに「理解が深まりました」「勉強になりました」と返してはいけない。実際に何かが伝わったときだけ前向きに反応すること\n   - 会話履歴・場面・内面と一貫させること\n2. ト書き(togaki): そのときの表情・仕草を「（〜した）」の形で1つ。会話文は入れない\n3. 評価して志望度の変動値(delta)を決める。★採点は辛口で行うこと\n   - 評価軸（重要な順）\n     a. ESの中身に具体的に踏み込めているか。カフェでの新人教育・マニュアル改訂・離職を3割減らした話・「忙しすぎて続かないのでは」という不安など、ESに書かれた固有の話題に触れず一般論で済ませた場合は加点しない\n     b. 就活の軸「${p.axis}」との整合、および本人の不安への手当て\n     c. パーソナライズ度。佐藤さん以外の誰に送っても成立する文面はテンプレとみなして減点\n     d. 場面と接触チャネルへの適切さ\n     e. NG行動（圧迫・急かし・放置・過度な囲い込み・嘘）\n   - 目安\n     素晴らしい（ESや軸に具体的に踏み込み、相手の不安に手当てできた）: +10〜+16\n     良い（具体性があり誠実。あと一歩）: +4〜+9\n     無難（間違ってはいないが誰にでも言える一般論）: -4〜0\n     薄い（短い・中身がない・同じことの繰り返し・誤字や敬語の乱れが目立つ）: -12〜-5\n     NG行動: -25〜-13\n   - ★「無難」の上限は0です。当たり障りのない対応にプラスを付けてはいけません\n   - 誤字脱字・敬語の乱れ・宛名や主語の欠落が目立つ場合は、内容が良くても2〜5点差し引くこと\n   - ※全${TOTAL_TURNS}ターンで承諾ライン${THRESHOLD}点に届きうる幅は確保すること（丁寧に作り込めば+10以上を出してよい）\n4. kind: "sasaru"(刺さった) / "good"(手応えあり) / "flat"(ふつう) / "miss"(響かなかった) / "jirai"(地雷を踏んだ) のいずれか1つ\n\n# 出力\n下記JSONオブジェクトのみを出力。前後に説明文やコードブロック記法を一切付けないこと。\n{"reply":"学生の発言","togaki":"（表情や仕草）","delta":整数,"kind":"sasaru|good|flat|miss|jirai","reason":"スコアが動いた理由。結果発表のフィードバック用に簡潔に（60字程度）","inner":"この瞬間の学生の本音。結果発表で開示（1文）","ng":["該当するNG行動。無ければ空配列"]}\n\n## 出力の厳守ルール（JSONが壊れると処理できないため必ず守ること）\n- 文字列の中でダブルクォート(")を絶対に使わない。強調や引用は「」を使う\n- 文字列の中で改行しない。1行で書く\n- deltaは符号の+を付けない。マイナスのみ-を付ける（例: 8 / -12）\n- 全体を1行のJSONで出力する`;
+  return `あなたは新卒採用のコミュニケーション体験ゲームのAIエンジンです。\n下記の「学生ペルソナ」になりきって面談での発言を返し、同時に人事担当者（プレイヤー）の発言を評価します。\n\n# 学生ペルソナ\n## 公開情報（プレイヤーも見ている）\n- 氏名: ${p.name} / ${p.university} / ${p.grade}\n- 志望業界: ${p.industries}\n- 就活の軸: ${p.axis}\n## エントリーシート（説明会当日に提出済み。プレイヤーも読める）\n- 志望動機: ${es.motivation}\n- 学生時代に力を入れたこと: ${es.gakuchika}\n- 自己PR: ${es.selfPR}\n- 不安に思っていること: ${es.concern}\n## 非公開の内面（あなただけが知る。決して口に出さない）\n- 本音: ${pv.honne}\n- 刺さるポイント: ${pv.sasaru.join(' / ')}\n- 地雷（踏まれると一気に冷める）: ${pv.jirai.join(' / ')}\n- 性格: ${pv.personality}\n- 重視条件の優先度: ${pv.priority}\n\n# 企業情報\n## 自社（プレイヤーの会社）\n${c.self.name} / ${c.self.business} / ${c.self.scale} / ${c.self.treat} / 社風: ${c.self.culture} / 選考: ${c.self.flow}\n## 競合\n${c.rivals.map(r=>`${r.name}（${r.tag}）: ${r.desc}`).join('\n')}\n\n# 現在の状況\n- 選考フェーズ: ${ph.label}（${c.self.flow}）\n- Stage ${st.id}/${STAGES.length}「${st.title}」: ${st.label}\n- 場面: ${st.scene}\n${rallyBlock}\n- この往復の焦点: ${t.aim}\n${chBlock}\n- 全${TOTAL_TURNS}往復中の${S.stageIdx*TPS+S.turnIdx+1}往復目\n- 現在の志望度: ${S.score}/100（内部値。会話で数値に言及することは絶対に禁止）\n\n# これまでのやり取り（学生の第一声から始まる同じ場面の続き）\n${hist}\n\n# 今回のプレイヤーの発言\n- 発言: ${msg || '（なし）'}\n- アクション: ${action || '（発言のみ）'}\n${timeoutBlock}${qualityBlock}\n# タスク\n1. ${isLine?'LINEの返信':'対面での発言'}として、就活生らしく自然に返す（作り込みすぎない）\n   - 刺さる対応には心を開き気味に、地雷を踏まれたら素っ気なく／戸惑い気味に\n   - ★中身のない声かけに「理解が深まりました」「勉強になりました」と返してはいけない。実際に何かが伝わったときだけ前向きに反応すること\n   - 会話履歴・場面・内面と一貫させること\n2. ト書き(togaki): そのときの表情・仕草を「（〜した）」の形で1つ。会話文は入れない\n3. 評価して志望度の変動値(delta)を決める。★採点は辛口で行うこと\n   - 評価軸（重要な順）\n     a. ESの中身に具体的に踏み込めているか。カフェでの新人教育・マニュアル改訂・離職を3割減らした話・「忙しすぎて続かないのでは」という不安など、ESに書かれた固有の話題に触れず一般論で済ませた場合は加点しない\n     b. 就活の軸「${p.axis}」との整合、および本人の不安への手当て\n     c. パーソナライズ度。佐藤さん以外の誰に送っても成立する文面はテンプレとみなして減点\n     d. 場面と接触チャネルへの適切さ\n     e. NG行動（圧迫・急かし・放置・過度な囲い込み・嘘）\n   - 目安\n     素晴らしい（ESや軸に具体的に踏み込み、相手の不安に手当てできた）: +10〜+16\n     良い（具体性があり誠実。あと一歩）: +4〜+9\n     無難（間違ってはいないが誰にでも言える一般論）: -4〜0\n     薄い（短い・中身がない・同じことの繰り返し・誤字や敬語の乱れが目立つ）: -12〜-5\n     NG行動: -25〜-13\n   - ★「無難」の上限は0です。当たり障りのない対応にプラスを付けてはいけません\n   - 誤字脱字・敬語の乱れ・宛名や主語の欠落が目立つ場合は、内容が良くても2〜5点差し引くこと\n   - ※全${TOTAL_TURNS}往復で承諾ライン${THRESHOLD}点に届きうる幅は確保すること（丁寧に作り込めば+10以上を出してよい）\n4. kind: "sasaru"(刺さった) / "good"(手応えあり) / "flat"(ふつう) / "miss"(響かなかった) / "jirai"(地雷を踏んだ) のいずれか1つ\n\n# 出力\n下記JSONオブジェクトのみを出力。前後に説明文やコードブロック記法を一切付けないこと。\n{"reply":"学生の発言","togaki":"（表情や仕草）","delta":整数,"kind":"sasaru|good|flat|miss|jirai","reason":"スコアが動いた理由。結果発表のフィードバック用に簡潔に（60字程度）","inner":"この瞬間の学生の本音。結果発表で開示（1文）","ng":["該当するNG行動。無ければ空配列"]}\n\n## 出力の厳守ルール（JSONが壊れると処理できないため必ず守ること）\n- 文字列の中でダブルクォート(")を絶対に使わない。強調や引用は「」を使う\n- 文字列の中で改行しない。1行で書く\n- deltaは符号の+を付けない。マイナスのみ-を付ける（例: 8 / -12）\n- 全体を1行のJSONで出力する`;
 }
 
 // AI呼び出しの失敗を「利用者向けメッセージ」「再試行してよいか」「原因コード」に分けて持つ。
@@ -742,9 +830,8 @@ function offlineEngine(msg, action, si, timedOut){
   // 共感語を1つ掠めただけで加点されると「無難」に点が付いてしまうので、
   // 加点の主軸は「ESへの言及」と「具体性（文量）」に置き、共感語は薄く効かせる。
   let delta=-3, hitJirai=false;
-  if(['面談を設定','社員を紹介','オフィス見学'].includes(action)) delta+=4;
-  else if(action==='食事に誘う') delta+=3;
-  else if(action==='資料を送付') delta+=2;
+  if(['社員を紹介','オフィス見学'].includes(action)) delta+=4;  // 現場のリアルを見せる一手は重い
+  else if(action==='面談を設定') delta+=3;
   delta += Math.min(3, countHits(SASARU_RE, msg));
   delta += Math.min(9, 3*ES_HOOKS.filter(k=>msg.includes(k)).length);  // ESへの言及が最大の得点源
   if(hitsJirai(msg)){ delta-=14; hitJirai=true; }
@@ -866,7 +953,7 @@ function renderOpening(){
   app.innerHTML=`<div class="hero screen"><div class="inner">
     <div style="font-size:56px;animation:popIn .7s ease">🤝</div>
     <h1>採用面談<br>シミュレーション</h1>
-    <p>AIが演じる就活生と面談し、内定承諾を勝ち取れ。<br>全${STAGES.length}ステージ×${TPS}ターン（計${TOTAL_TURNS}回）の個人戦。</p>
+    <p>AIが演じる就活生と面談し、内定承諾を勝ち取れ。<br>全${STAGES.length}場面×${TPS}ラリー（計${TOTAL_TURNS}回）の個人戦。</p>
     <div class="flabel">お名前・ニックネーム（ランキングに表示されます）</div>
     <input class="nameinput" id="pname" maxlength="${NAME_MAX}" placeholder="例：山田 / たなか / みなと"
       autocomplete="nickname" autocorrect="off" spellcheck="false" enterkeyhint="go" />
@@ -905,9 +992,11 @@ function toBriefing(){
 
 function renderBriefing(){
   const p=PERSONA.public,c=COMPANY;
-  app.innerHTML=`<div class="screen"><div class="wrap">
+  app.innerHTML=`<div class="screen"><div class="wrap spread">
     <h2 style="font-weight:900;margin:0 0 4px">📋 作戦会議　<span class="tag" style="background:#0b3d2e;color:#fff">${esc(S.name)}</span></h2>
     <p class="muted" style="margin:0 0 16px;font-size:14px">面談前に、攻略対象と自社・競合を頭に入れよう。学生情報は面談中も右上の「学生情報」からいつでも確認できます。</p>
+    <div class="spread-grid">
+    <div class="page">
     <div class="card lift">
       <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
         <div class="avatar" style="width:52px;height:52px;font-size:28px;background:#e8eef1;animation:breathe 3.5s infinite">🧑‍🎓</div>
@@ -928,6 +1017,8 @@ function renderBriefing(){
       </div>
       <div class="hintbox" style="margin-top:8px">💡 <b>ここが最大の得点源。</b>ESに書かれた具体的な話に触れずに一般論で返すと、加点されません。</div>
     </div>
+    </div>
+    <div class="page">
     <div class="card lift">
       <div class="sect-t">■ あなたの会社</div>
       <div style="font-weight:900;font-size:16px;margin-bottom:4px">${c.self.name}</div>
@@ -945,18 +1036,20 @@ function renderBriefing(){
     </div>
     <div class="card">
       <div class="sect-t" style="color:#555">■ ルール</div>
-      <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.9;color:#555">
-        <li><b>${STAGES.length}ステージ×各${TPS}ターン（計${TOTAL_TURNS}ターン）</b>で内定承諾を目指す</li>
+      <ul class="rulelist" style="margin:0;padding-left:18px;font-size:14px;line-height:1.9;color:#555">
+        <li><b>${STAGES.length}つの場面を各${TPS}ラリー（計${TOTAL_TURNS}回の発言）</b>で内定承諾を目指す</li>
+        <li>各場面は<b>学生の一言から始まる</b>。あなたはそれに返し、返ってきた反応にもう一度返す</li>
         <li>選考は <b>${PHASES.map(p=>p.label).join(' → ')}</b> と進む。今どこかは画面上部に常時表示</li>
-        <li>最初の接触は<b>LINE</b>。対面と違って表情で補えないぶん、<b>文面の質がそのまま伝わる</b></li>
-        <li>1ターン＝1回の声かけ。<b>チャンスは${TOTAL_TURNS}回だけ</b></li>
+        <li>最初の場面は<b>LINE</b>。対面と違って表情で補えないぶん、<b>文面の質がそのまま伝わる</b></li>
         <li>採点は辛口。<b>短文・中身のない挨拶・同じことの繰り返しはマイナス</b>。無難な一般論では上がらない</li>
-        <li>制限時間 <b>${Math.floor(CFG.turnSeconds/60)}分/ターン</b>。⏰<b>時間切れは「放置」扱いで大幅マイナス</b>（書きかけは自動送信）</li>
+        <li>制限時間 <b>${Math.floor(CFG.turnSeconds/60)}分/ラリー</b>。⏰<b>時間切れは「放置」扱いで大幅マイナス</b>（書きかけは自動送信）</li>
         <li>志望度スコアはプレイ中<b>非公開</b>（温度感のみ）。結果発表で全公開</li>
         <li>承諾ライン${THRESHOLD}点到達で内定承諾。参加者全員でランキング</li>
       </ul>
     </div>
-    <button class="btn-primary press" onclick="goStage(0)">Stage 1 へ ▶</button>
+    </div>
+    </div>
+    <div class="spread-foot"><button class="btn-primary press" onclick="goStage(0)">Stage 1 へ ▶</button></div>
   </div></div>`;
 }
 
@@ -973,7 +1066,7 @@ function renderStageIntro(){
     <div class="big">${st.id}</div>
     <div class="bar"></div>
     <h2>${st.title}</h2>
-    <div class="sub">${st.sub}　—　全${TPS}ターン</div>
+    <div class="sub">${st.sub}　—　${st.label}（${TPS}ラリー）</div>
     <div class="brief">${st.intro}</div>
     <div class="state">
       <div class="e">${m.em}</div>
@@ -982,8 +1075,8 @@ function renderStageIntro(){
         <div class="v">${m.label}</div>
       </div>
     </div>
-    <div class="meta">⏱ 相談時間 ${Math.floor(CFG.turnSeconds/60)}分/ターン　｜　⚠️ 時間切れは放置扱い</div>
-    <button class="btn-primary press" onclick="startStage()">${st.turns[0].ch==='line'?'LINEを送る ▶':'面談を始める ▶'}</button>
+    <div class="meta">⏱ 相談時間 ${Math.floor(CFG.turnSeconds/60)}分/ラリー　｜　⚠️ 時間切れは放置扱い</div>
+    <button class="btn-primary press" onclick="startStage()">${st.ch==='line'?'LINEを開く ▶':'面談を始める ▶'}</button>
   </div></div>`;
 }
 function startStage(){
@@ -992,8 +1085,10 @@ function startStage(){
   S.screen='play'; render();
 }
 function pushScene(stageOpen){
-  const st=STAGES[S.stageIdx],t=st.turns[S.turnIdx];
-  S.log.push({type:'scene',stage:st,turn:t,stageOpen});
+  const st=STAGES[S.stageIdx];
+  S.log.push({type:'scene',stage:st,turn:curTurn(),stageOpen});
+  // 場面の口火は学生から切る。プレイヤーは「返信する」ところから始まるのでラリーになる。
+  if(stageOpen) S.log.push({type:'said',text:st.opening});
 }
 function pipsHTML(){
   return STAGES.map((s,i)=>`<div class="pipgroup"><span class="lbl">S${s.id}</span>${
@@ -1002,7 +1097,7 @@ function pipsHTML(){
 }
 function headHTML(){
   const st=STAGES[S.stageIdx];
-  return `Stage ${st.id}/${STAGES.length} ・ ターン ${S.turnIdx+1}/${TPS}<small>${st.title}｜${st.sub}</small>`;
+  return `Stage ${st.id}/${STAGES.length} ・ ラリー ${S.turnIdx+1}/${TPS}<small>${st.label}｜${st.sub}</small>`;
 }
 // 選考フェーズのステッパー。今どこにいるかを常時見せる
 function phaseHTML(){
@@ -1117,7 +1212,9 @@ function toggleAction(a){
   });
 }
 function setTurnHeader(){
-  const st=STAGES[S.stageIdx],t=st.turns[S.turnIdx];
+  const t=curTurn();
+  // aim（そのラリーの狙い）はAIの採点基準として使うだけで、画面には出さない。
+  // 出すと答えを教えることになり、ランキングの差がつかなくなる。
   document.getElementById('scene').textContent='📍 '+t.scene;
   document.querySelector('.m-head .stg').innerHTML=headHTML();
   document.querySelectorAll('.m-head .pipgroup').forEach((g,i)=>{
@@ -1260,7 +1357,7 @@ function applyResult(msg,action,r,timedOut){
   setTogaki(r.togaki);updateMood(true);
   logEl.scrollTop=logEl.scrollHeight;
   S.history.push({stageIdx:S.stageIdx,turnIdx:S.turnIdx,
-    label:STAGES[S.stageIdx].turns[S.turnIdx].label, message: msg||TIMEOUT_MSG, action, timedOut,
+    label:`${STAGES[S.stageIdx].label}　ラリー${S.turnIdx+1}/${TPS}`, message: msg||TIMEOUT_MSG, action, timedOut,
     reply:r.reply,delta:r.delta,reason:r.reason,inner:r.inner,ng:r.ng,
     scoreAfter:S.score,kind:r.kind});
   S.pending=null; S.busy=false; S.timedOut=false;
@@ -1284,7 +1381,15 @@ function logNode(m){
   const d=document.createElement('div');
   if(m.type==='scene'){
     d.className='scene-div';const st=m.stage,t=m.turn;
-    d.innerHTML=`<span class="line"></span><span class="txt">${m.stageOpen?`Stage ${st.id}　${st.title}｜`:''}${t.label}</span><span class="line"></span>`;
+    // 2ラリー目は同じ場面の続き。新しい場面が始まったように見せない。
+    const txt = m.stageOpen ? `Stage ${st.id}　${st.title}｜${st.label}` : `ラリー ${t.rally}/${TPS}　—　会話の続き`;
+    d.innerHTML=`<span class="line"></span><span class="txt">${txt}</span><span class="line"></span>`;
+    return d;
+  }
+  // 学生の第一声。まだ評価前なのでリアクションバッジは付けない。
+  if(m.type==='said'){
+    d.className='turn-row student';
+    d.innerHTML=`<div class="who">${PERSONA.public.name}</div><div class="linecard">${esc(m.text)}</div>`;
     return d;
   }
   if(m.type==='you'){
@@ -1321,6 +1426,27 @@ function logNode(m){
 }
 function clearTmp(){document.querySelectorAll('#log [data-tmp]').forEach(n=>n.remove());}
 
+/* 模範解答ブロック。中間報告と結果総括の両方で使う。
+   自分が実際に何を書いたかを併記しないと「なるほど」で終わってしまうので、
+   自分の発言（あれば）と模範解答を必ず並べて出す。 */
+function modelAnswerHTML(st, opts){
+  const hs = S.history.filter(h=>h.stageIdx===st.id-1);
+  const sub = (opts&&opts.sub) || 'この場面で満点に近い返し方の一例。丸暗記ではなく、どこを具体的に踏み込んでいるかを見てください。';
+  return `<div class="model">
+    <div class="mh">💡 模範解答｜${esc(st.label)}</div>
+    <div class="msub">${sub}</div>
+    ${st.model.map((m,i)=>{
+      const mine = hs[i];
+      return `<div class="mi">
+        <span class="rn">ラリー${i+1}</span>
+        ${mine?`<div class="mw" style="margin:0 0 6px">あなた：「${clip(mine.message,60)}」<b style="margin-left:6px">${mine.delta>0?'+':''}${mine.delta}</b></div>`:''}
+        <div class="mt">${esc(m.text)}</div>
+        <div class="mw"><b>なぜ効くか：</b>${esc(m.why)}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
 function renderReport(){
   const st=STAGES[S.stageIdx];
   const turns=S.history.filter(h=>h.stageIdx===S.stageIdx);
@@ -1353,6 +1479,7 @@ function renderReport(){
         ${hadNg?'<br><span style="color:#c62828">⚠️ 地雷を踏んだ場面あり。挽回が必要。</span>':''}
         ${hadTO?'<br><span style="color:#c62828">⏰ 時間切れによる放置が発生。信頼を大きく損ねた。</span>':''}</div></div>
     </div>
+    <div class="card" style="padding:12px">${modelAnswerHTML(st)}</div>
     <button class="btn-primary press" onclick="${isLast?"S.screen='result';render()":'goStage('+(S.stageIdx+1)+')'}">${isLast?'結果を見る 🎉':'Stage '+(st.id+1)+' へ ▶'}</button>
   </div></div>`;
 }
@@ -1391,7 +1518,7 @@ function renderResult(){
               <div class="rz">💡 ${esc(h.reason)}</div>
               <div class="in">🗨 本音：${esc(h.inner)}</div>
               ${h.ng&&h.ng.length?`<div class="ng">⚠️ NG行動：${h.ng.map(esc).join(' / ')}</div>`:''}
-            </div>`).join('');
+            </div>`).join('')+modelAnswerHTML(st);
         }).join('')}
       </div>
       <div class="btnrow">
