@@ -323,17 +323,10 @@ svg.chart{width:100%;height:auto;display:block}
 .admin-box{background:rgba(255,255,255,.06);border:1px solid #4a3030;border-radius:16px;padding:16px;margin-top:22px}
 .admin-box .ah{font-size:13px;font-weight:900;color:#ff8a80;margin-bottom:6px}
 .admin-box .ap{font-size:12px;color:#bbb;line-height:1.7;margin:0 0 10px}
+/* type="password" にはしないこと。IMEが無効になって漢字変換ができなくなる（合言葉は日本語）。 */
 .admin-input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #555;background:rgba(0,0,0,.35);
   color:#fff;font-size:15px;font-weight:700;outline:none;margin-bottom:10px}
 .admin-input:focus{border-color:#ff8a80}
-/* 合言葉欄。type="password" だとIMEが無効になって漢字変換ができないので、
-   type="text" のまま伏せ字だけCSSで掛ける。IMEは text 入力なら普通に効く。 */
-.admin-pass{display:flex;gap:8px;align-items:stretch;margin-bottom:10px}
-.admin-pass .admin-input{flex:1;margin-bottom:0;min-width:0}
-.admin-input.masked{-webkit-text-security:disc;text-security:disc}
-.admin-eye{flex-shrink:0;padding:0 14px;font-size:12px;font-weight:900;color:#ccc;
-  border:1px solid #555;border-radius:12px;background:rgba(0,0,0,.35)}
-.admin-eye:active{color:#fff}
 .rank .count{text-align:center;color:#7fd6a5;font-size:12px;font-weight:800;margin-bottom:16px}
 .spin{color:#aaa;text-align:center;padding:30px;font-size:14px}
 
@@ -2056,11 +2049,8 @@ function renderAdmin(){
     <div class="admin-box">
       <div class="ah">🗑 記録の全消去</div>
       <p class="ap">リハーサルのダミー記録は本番前にここで消してください。<b>消すと元に戻せません。</b></p>
-      <div class="admin-pass">
-        <input id="admtoken" class="admin-input masked" type="text" autocomplete="off"
-          autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="運営の合言葉">
-        <button type="button" class="admin-eye" id="admeye" onclick="toggleTokenMask()">表示</button>
-      </div>
+      <input id="admtoken" class="admin-input" type="text" autocomplete="off"
+        autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="運営の合言葉">
       <button class="btn-ghost press" style="color:#c62828;width:100%" onclick="wipeRanking()">全参加者の記録を消去する</button>
       <div id="admmsg" class="ap" style="margin:8px 0 0"></div>
     </div>
@@ -2069,12 +2059,6 @@ function renderAdmin(){
     </div>
   </div></div>`;
   refreshRanking();
-}
-// 伏せ字の切り替え。type は text のままなので、切り替えてもIMEの状態は変わらない。
-function toggleTokenMask(){
-  const inp=document.getElementById('admtoken'), btn=document.getElementById('admeye');
-  if(!inp||!btn) return;
-  btn.textContent = inp.classList.toggle('masked') ? '表示' : '隠す';
 }
 async function wipeRanking(){
   const inp=document.getElementById('admtoken'), msg=document.getElementById('admmsg');
