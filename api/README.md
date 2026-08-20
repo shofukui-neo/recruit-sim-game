@@ -90,6 +90,38 @@ api/
 | `GEMINI_ATTEMPT_TIMEOUT_MS` | 12000 | 1回の呼び出しの上限 |
 | `GEMINI_TOTAL_TIMEOUT_MS` | 26000 | 再試行込みの上限 |
 | `GEMINI_MAX_RETRIES` | 2 | 再試行回数 |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | 未設定 | `/api/rank` の保存先（Upstash Redis / Vercel KV）。未設定だとランキングが動かない |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | 未設定 | 上の別名。`KV_` 系が優先される |
+| `ADMIN_TOKEN` | 未設定 | `/api/rank` の記録全消去に必要な合言葉。未設定なら `EVENT_PASS` にフォールバックし、どちらも無ければ消去は 403 |
+
+## /api/rank — ランキング
+
+| メソッド | 用途 | 認証 |
+| --- | --- | --- |
+| `GET /api/rank?room=<room>` | 参加者一覧（`{ rows: [{name, score, ok, at}] }`） | なし |
+| `POST /api/rank` `{room, pid, name, score, ok}` | 自分のスコアを保存（`pid` 単位で上書き） | なし |
+| `POST /api/rank` `{room, action:'clear'}` | ルームの記録を全消去 | `x-admin-token` ヘッダ必須 |
+
+消去は運営用画面 `/?admin=1` からのみ行える。参加者が見るランキング画面には消去手段を置いていない。
+
+### セットアップ（Vercel）
+
+1. Vercel のプロジェクト → **Storage** → Upstash Redis を作成し、プロジェクトに接続する。
+   `KV_REST_API_URL` / `KV_REST_API_TOKEN` が自動で注入される。
+2. **Settings → Environment Variables** で `ADMIN_TOKEN` を設定する（運営の合言葉）。
+3. 再デプロイする。環境変数は関数のコールドスタート時に読まれるため、追加しただけでは反映されない。
+
+### ランキングが表示されないときの切り分け
+
+ブラウザで `https://<デプロイ先>/api/rank?room=mochica0722` を直接開く。
+
+| 応答 | 原因 | 対処 |
+| --- | --- | --- |
+| `503 {"error":"kv_not_configured"}` | KV の環境変数が未設定、または再デプロイしていない | 上のセットアップ手順 |
+| `500 {"error":"rank_failed"}` | KV には繋がるが REST 呼び出しが失敗 | URL / トークンの値と、Upstash 側の状態を確認 |
+| `200 {"rows":[]}` | 正常。まだ誰も結果画面に到達していないだけ | — |
+
+ランキング画面には原因コードをそのまま表示するようにしてあるので、参加者の画面の文言からも切り分けられる。
 
 ## ログ
 

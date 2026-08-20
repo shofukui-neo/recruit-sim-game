@@ -89,23 +89,29 @@ textarea,input,select{font-size:16px}
 .engine button.on{background:#fff;color:var(--navy);box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .engine small{display:block;font-weight:700;font-size:10px;opacity:.75}
 
-.intro{min-height:var(--app-h);display:flex;align-items:center;justify-content:center;color:#fff;
+/* 選考記録を載せたぶん縦に伸びるので、はみ出したらスクロールできるようにしておく。
+   align-items:center + overflow だと上端が切れるため、中央寄せは .inner の margin:auto で行う。 */
+.intro{min-height:var(--app-h);display:flex;justify-content:center;color:#fff;
   padding:calc(24px + var(--sat)) calc(20px + var(--sar)) calc(24px + var(--sab)) calc(20px + var(--sal));
-  background:linear-gradient(135deg,#08281f,#0b3d2e,#123f31);background-size:200% 200%;animation:gradientShift 10s ease infinite;position:relative;overflow:hidden}
-.intro .inner{max-width:480px;width:100%;text-align:center;position:relative;z-index:2}
+  background:linear-gradient(135deg,#08281f,#0b3d2e,#123f31);background-size:200% 200%;animation:gradientShift 10s ease infinite;position:relative;overflow-y:auto}
+.intro .inner{max-width:640px;width:100%;text-align:center;position:relative;z-index:2;margin:auto}
 .intro .num{font-size:12px;font-weight:900;letter-spacing:.35em;color:#7fd6a5;animation:fadeIn .6s ease}
 .intro .big{font-size:66px;font-weight:900;line-height:1;margin:4px 0 8px;text-shadow:0 8px 34px rgba(6,199,85,.55);animation:titleIn .85s cubic-bezier(.2,.9,.3,1)}
 .intro .bar{height:3px;background:var(--green);margin:0 auto 16px;width:120px;border-radius:2px;animation:lineSweep .7s ease .35s both}
 .intro h2{font-size:25px;font-weight:900;margin:0 0 4px;animation:slideUp .6s ease .2s both}
 .intro .sub{font-size:12px;color:#9fd9bb;font-weight:800;margin-bottom:18px;animation:slideUp .6s ease .3s both}
-.intro .brief{background:rgba(255,255,255,.09);border-left:3px solid var(--green);border-radius:12px;padding:14px 16px;font-size:14px;line-height:1.85;text-align:left;margin-bottom:14px;animation:slideUp .6s ease .4s both}
+.intro .brief{background:rgba(255,255,255,.09);border-left:3px solid var(--green);border-radius:12px;padding:16px 18px;font-size:15px;line-height:1.85;text-align:left;margin-bottom:14px;animation:slideUp .6s ease .4s both}
 .intro .state{display:flex;align-items:center;gap:13px;background:rgba(0,0,0,.28);border-radius:14px;padding:12px 16px;margin-bottom:18px;text-align:left;animation:slideUp .6s ease .5s both}
 .intro .state .e{font-size:36px;flex-shrink:0}
 .intro .state .t{font-size:11px;color:#8fc6a9;font-weight:800}
 .intro .state .v{font-weight:900;font-size:15px}
 .intro .meta{font-size:12px;color:#7fd6a5;margin-bottom:16px;animation:slideUp .6s ease .55s both}
+/* ステージ導入で読ませる選考記録。面談に入る前のインプットの時間をここで取る。 */
+.intro .recwrap{text-align:left;margin-bottom:16px;animation:slideUp .6s ease .45s both}
+.intro .rectitle{font-size:11px;font-weight:900;color:#7fd6a5;margin-bottom:7px}
+.intro .rectitle span{font-weight:700;color:#8fc6a9}
 
-.meeting{max-width:680px;margin:0 auto;height:var(--app-h);display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
+.meeting{max-width:760px;margin:0 auto;height:var(--app-h);display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
 .m-head{flex-shrink:0;background:#fff;border-bottom:1px solid #e9edef;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
   padding:calc(8px + var(--sat)) calc(14px + var(--sar)) 8px calc(14px + var(--sal))}
 .m-head .stg{font-weight:900;font-size:14px;flex:1;min-width:0;overflow:hidden}
@@ -126,6 +132,19 @@ textarea,input,select{font-size:16px}
 .es-q{font-size:10px;font-weight:900;color:#a08a5b;margin-top:9px}
 .es-card .es-q:first-child{margin-top:0}
 .es-a{font-size:12.5px;line-height:1.65;margin-top:2px}
+/* 選考記録。ESと並ぶ「プレイヤーが読める手がかり」なので、ESカードと同格の見た目にする。
+   作戦会議・ステージ導入・面談中ドロワーの3箇所で同じ部品を使い回す。 */
+.rec{background:#f4faf7;border:1px solid #d9e9e1;border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.rec:last-child{margin-bottom:0}
+.rec .rh{font-size:11px;font-weight:900;color:#0b7a45;margin-bottom:5px}
+.rec ul{margin:0;padding-left:17px;font-size:12.5px;line-height:1.7}
+.rec ul li{margin-bottom:3px}
+.rec .rc{font-size:11.5px;color:#6f8a7c;line-height:1.6;border-top:1px dashed #d9e9e1;margin-top:6px;padding-top:5px}
+/* ステージ導入は濃い緑地なので、同じ部品の配色だけ反転させる */
+.intro .rec{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.16);text-align:left}
+.intro .rec .rh{color:#7fd6a5}
+.intro .rec ul{color:#eafff2}
+.intro .rec .rc{color:#9fd9bb;border-top-color:rgba(255,255,255,.16)}
 .pips{display:flex;gap:10px;align-items:center;flex-shrink:0}
 .pipgroup{display:flex;gap:3px;align-items:center}
 .pipgroup .lbl{font-size:9px;color:var(--sub);font-weight:800;margin-right:2px}
@@ -138,7 +157,14 @@ textarea,input,select{font-size:16px}
 
 .stage-panel{flex-shrink:0;background:linear-gradient(180deg,#123f31,#0b3d2e);color:#fff;position:relative;overflow:hidden;
   padding:14px calc(16px + var(--sar)) 12px calc(16px + var(--sal))}
-.stage-panel .scene{font-size:12px;color:#bfe9d3;background:rgba(255,255,255,.08);padding:6px 10px;border-radius:10px;line-height:1.55;margin-bottom:12px}
+/* 場面説明。狭い画面やキーボード表示中は行数を丸めるが、消しはしない。
+   タップで全文に開けるようにして、「何を書けばいいか」の手がかりを常に取り戻せるようにする。 */
+.stage-panel .scene{font-size:12.5px;color:#bfe9d3;background:rgba(255,255,255,.08);padding:7px 11px;border-radius:10px;line-height:1.6;margin-bottom:12px;cursor:pointer}
+/* .open が付いているときは、どの画面サイズでも clamp を解除して全文を出す。
+   ヒントは .scene の外（兄弟要素）に置く。clamp の内側だと一緒に切り落とされてしまう。 */
+.stage-panel .scene.open{display:block!important;-webkit-line-clamp:none!important;overflow:visible!important}
+.scene-more{display:none;font-size:11px;font-weight:900;color:#7fd6a5;margin:-8px 0 10px;padding:2px 2px;text-align:left}
+.scene-more.show{display:block}
 .seat{display:flex;align-items:center;gap:14px}
 .avatar{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:44px;background:rgba(255,255,255,.12);flex-shrink:0;position:relative;transition:.5s}
 .avatar.pulse{animation:ringPulse 1.2s ease}
@@ -196,7 +222,7 @@ textarea,input,select{font-size:16px}
 .composer .field{display:flex;gap:8px;align-items:flex-end}
 /* font-size は16px固定（iOSの自動ズーム防止）。入力量に応じて高さを伸ばす。 */
 .composer textarea{flex:1;resize:none;border:1px solid #dcdfe2;border-radius:14px;padding:12px;font-size:16px;outline:none;line-height:1.5;
-  min-height:50px;max-height:122px;overflow-y:auto}
+  min-height:50px;max-height:200px;overflow-y:auto}
 .composer textarea:focus{border-color:var(--green)}
 .composer textarea:disabled{background:#f4f5f6;color:#aaa}
 .send{width:50px;height:50px;border-radius:50%;flex-shrink:0;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;background:var(--green);box-shadow:0 4px 14px rgba(6,199,85,.4)}
@@ -242,10 +268,11 @@ svg.chart{width:100%;height:auto;display:block}
 .fb-stage{font-size:12px;font-weight:900;color:#fff;background:var(--green);border-radius:8px;padding:3px 10px;display:inline-block;margin:14px 0 8px}
 .fb{padding:10px 0;border-bottom:1px solid #f2f2f2}
 .fb:last-child{border-bottom:none}
-.fb .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.fb .top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
 .fb .tt{font-size:12px;font-weight:800;background:#eef2f5;color:#556;border-radius:6px;padding:2px 8px}
-.fb .dl{font-weight:900;font-size:14px}
-.fb .said{font-size:13px;margin:3px 0}
+.fb .dl{font-weight:900;font-size:13px;white-space:nowrap}
+/* 自分の発言は全文出す。長文でも読めるよう、引用として少し押し出しておく */
+.fb .said{font-size:13.5px;line-height:1.75;margin:5px 0;background:#fffdf5;border-left:3px solid var(--amber);border-radius:8px;padding:8px 11px;white-space:pre-wrap;word-break:break-word}
 .fb .rz{font-size:13px;background:#f6f9fa;border-radius:10px;padding:7px 10px;margin:3px 0}
 .fb .in{font-size:13px;font-style:italic;color:#8e44ad}
 .fb .ng{font-size:12px;color:#c62828;margin-top:3px}
@@ -266,7 +293,7 @@ svg.chart{width:100%;height:auto;display:block}
 .rank{min-height:var(--app-h);display:flex;align-items:center;
   padding:calc(26px + var(--sat)) calc(16px + var(--sar)) calc(30px + var(--sab)) calc(16px + var(--sal));
   background:linear-gradient(135deg,#111,#2d2d2d,#111);background-size:200% 200%;animation:gradientShift 14s infinite}
-.rank .inner{max-width:640px;margin:0 auto;width:100%}
+.rank .inner{max-width:760px;margin:0 auto;width:100%}
 .rrow{display:flex;align-items:center;gap:14px;background:#fff;border-radius:16px;padding:13px 18px;margin-bottom:10px;box-shadow:0 6px 16px rgba(0,0,0,.25);animation:slideInRight .5s ease both}
 .rrow.you{background:linear-gradient(90deg,#0b3d2e,#06C755);color:#fff}
 .rrow .pos{font-size:21px;font-weight:900;width:34px;text-align:center;color:#999}
@@ -276,6 +303,13 @@ svg.chart{width:100%;height:auto;display:block}
 .rank .tools{display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap}
 .rank .tools button{font-size:13px;font-weight:800;border-radius:12px;padding:0 20px;min-height:46px;flex:1 1 150px}
 .rank .note{color:#888;font-size:11px;margin-top:14px;text-align:center;line-height:1.7}
+/* 運営用コンソール（/?admin=1）。参加者の画面には出さない */
+.admin-box{background:rgba(255,255,255,.06);border:1px solid #4a3030;border-radius:16px;padding:16px;margin-top:22px}
+.admin-box .ah{font-size:13px;font-weight:900;color:#ff8a80;margin-bottom:6px}
+.admin-box .ap{font-size:12px;color:#bbb;line-height:1.7;margin:0 0 10px}
+.admin-input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #555;background:rgba(0,0,0,.35);
+  color:#fff;font-size:15px;font-weight:700;outline:none;margin-bottom:10px}
+.admin-input:focus{border-color:#ff8a80}
 .rank .count{text-align:center;color:#7fd6a5;font-size:12px;font-weight:800;margin-bottom:16px}
 .spin{color:#aaa;text-align:center;padding:30px;font-size:14px}
 
@@ -394,28 +428,29 @@ body.kb .temp-note,body.kb .togaki{display:none}
   /* さらにキーボードが出ると残りは300px前後しかない。
      入力欄と直前のやり取りを最優先し、参照情報は畳む。 */
   body.kb .phasebar{display:none}
-  body.kb .stage-panel .scene{display:none}
+  /* ここまで狭くても場面説明は消さない。1行に丸めて残し、タップで全文に開けるようにする */
+  body.kb .stage-panel .scene{-webkit-line-clamp:1;margin-bottom:6px}
   body.kb .stage-panel .tempbar{display:none}
   body.kb .stage-panel{padding-top:6px;padding-bottom:6px}
   body.kb .stage-panel .avatar{width:32px;height:32px;font-size:18px}
   body.kb .seat{gap:9px}
   body.kb .seat .who .mood{font-size:11px}
   body.kb .log{padding-top:8px;padding-bottom:2px}
-  body.kb .composer textarea{max-height:96px}
+  body.kb .composer textarea{max-height:130px}
 }
 /* 568px級の端末でキーボードが出ると残りは310px前後。
    入力欄が伸びきると composer だけで画面を使い切ってしまうので、2行分で頭打ちにする。 */
 @media (max-height:600px){
-  body.kb .composer textarea{max-height:74px}
+  body.kb .composer textarea{max-height:92px}
 }
 
 /* 横向き。高さが極端に足りないので学生パネルは名前と温度感だけに絞る */
 @media (max-height:480px){
-  .stage-panel .scene{display:none}
+  .stage-panel .scene{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:6px}
   .stage-panel .avatar{width:40px;height:40px;font-size:22px}
   .togaki{display:none}
   .m-head .stg small{display:none}
-  .composer textarea{max-height:74px}
+  .composer textarea{max-height:92px}
 }
 
 /* 端末の「視差効果を減らす」設定を尊重する */
@@ -437,6 +472,10 @@ const CFG = {
   timeoutMs: 30000,
   room: 'mochica0722',
 };
+// 運営用の画面は URL で完全に分ける（/?admin=1）。
+// 参加者が到達するランキング画面に消去ボタンを置いていたため、
+// 誤操作で全参加者の記録が飛ぶ余地があった。消去は /api/rank 側でも合言葉を検証する。
+const IS_ADMIN = new URLSearchParams(location.search).has('admin');
 // 1ステージあたりのラリー数（＝プレイヤーが発言できる回数）。1ステージ＝1場面を2往復する。
 const TPS = 2;
 const NAME_MAX = 12;
@@ -464,6 +503,39 @@ const PERSONA = {
     priority:'成長 ＞ 人・社風 ＞ 安定 ＞ 年収 ＞ 勤務地' },
   initialScore:48,
 };
+// 選考記録。各選考フェーズで学生が実際に話した内容と、面接官の所感。
+// ES と並ぶ「プレイヤーが読める手がかり」。
+// ★ここに書かれていない話を前提にした模範解答・採点は絶対に作らないこと。
+//   触れようのない情報で減点されるのが、プレイヤーにとって最も納得できない体験になる。
+// unlockStage は「そのステージの開始時点で読めるようになる」の意味。
+const RECORDS = [
+  { unlockStage:1, when:'会社説明会（当日）', icon:'📣',
+    notes:[
+      'アンケートに「若手でも裁量が大きい、という話が一番刺さりました」と記入。',
+      '質疑応答で「新人研修はどのくらいの期間ありますか」と質問。',
+      '自由記述に「入社3年目の方の1日のスケジュールが知りたいです」と記入。',
+    ],
+    comment:'説明会担当：最前列で熱心にメモを取っていた。質問は制度・研修まわりに集中。' },
+  { unlockStage:2, when:'一次面接', icon:'🗣️',
+    notes:[
+      '「カフェのバイトで、新人が続けて3人辞めたのを見て、自分にできることがあるはずだと思った」',
+      '「マニュアルを作り直すとき、辞めた人が何につまずいたのかを一人ずつ聞いて回った」',
+      '「人材の仕事なら、その"つまずき"に向き合うこと自体を仕事にできると思った」',
+      '「不安なのは、若手に任せてもらえる分、失敗したときに支えてもらえるのかどうか」',
+    ],
+    comment:'面接官所感：受け答えは丁寧で、具体例がすべて自分の言葉。「支えてもらえるのか」への答えをこちらが用意しきれなかったのが心残り。' },
+  { unlockStage:3, when:'最終面接', icon:'🎯',
+    notes:[
+      '「3年後は、後輩がつまずいたときに最初に相談される人になっていたい」',
+      '「他社も受けていて、大手を1社、最終まで進んでいる」',
+      '「親からは"名前の知られている会社にしなさい"と言われている」と苦笑いしながら話した。',
+      '「決めるときは、自分で納得してから決めたい」',
+    ],
+    comment:'面接官所感：迷いは正直に話してくれた。親の意向に触れたときだけ、声のトーンが落ちた。' },
+];
+// 現在のステージ時点で開示済みの記録だけを返す。
+// 未開示の記録をAIプロンプトに渡すと、また「知りようのない情報」で採点されてしまう。
+const openRecords = () => RECORDS.filter(r => r.unlockStage <= S.stageIdx + 1);
 const COMPANY = {
   self:{ name:'株式会社ブライトキャリア', business:'人材紹介・採用支援（HR Tech）',
     scale:'従業員300名 / 設立15年 / 成長中のベンチャー', treat:'初任給28万 / 平均残業30h / リモート週2',
@@ -487,9 +559,9 @@ const PHASES = [
 // model は結果総括で開示する模範解答。ラリーごとに「何を言うか」と「なぜ効くか」を持つ。
 const STAGES = [
   { id:1, title:'出会い・信頼づくり', sub:'序盤 — 関係構築',
-    intro:'説明会で出会った佐藤さんは、まだあなたの会社を「候補のひとつ」としか見ていない。ここで信頼を勝ち取れなければ、後半で何を言っても届かない。まずは「この人になら本音を話せる」と思ってもらうことが全て。',
-    label:'説明会後の初回LINE', phase:0, ch:'line',
-    scene:'会社説明会の翌日。熱心にメモを取っていた佐藤さんとLINEが繋がり、向こうから1通目が届いた。まだ志望度は高くない。ここでの2往復で印象が決まる。',
+    intro:'説明会当日にESを提出した佐藤さんは、まだあなたの会社を「候補のひとつ」としか見ていない。ここで信頼を得られないと、後半の言葉が届きにくくなる。まずは「この人になら本音を話せる」と思ってもらうことが全て。',
+    label:'ES提出後の初回アプローチ（LINE）', phase:0, ch:'line',
+    scene:'説明会当日にESを提出した佐藤さんとLINEが繋がり、翌日、向こうから1通目が届いた。まだ志望度は高くない。ここでの2往復で印象が決まる。',
     opening:'昨日はありがとうございました！お話とても面白かったです。またよろしくお願いします🙇‍♀️',
     rallies:[
       { aim:'まずは「ちゃんと自分を見てくれている」と思わせる。ESの具体に触れられるか。' },
@@ -502,23 +574,23 @@ const STAGES = [
         why:'ESに書かれた不安をそのまま引用して逃げずに扱う。数字を出しつつ「数字より実際が気になりますよね」と先回りし、失敗談を持つ社員を提示（刺さるポイント）。最後に「決めるのはその後で」と意思決定を委ねて圧をかけない。' },
     ]},
   { id:2, title:'深耕・動機づけ', sub:'中盤 — 志望度を育てる',
-    intro:'一次面接を通過し、距離は少し縮まった。しかしこの面談の中で、佐藤さんから「他社から内定が出た」と打ち明けられる。ここまでにどれだけ志望度を積み上げられているかが、後半の生死を分ける。',
+    intro:'一次面接を通過し、距離は少し縮まった。しかしこの面談の冒頭で、佐藤さんから「メガ・ホールディングスから内定が出た」と打ち明けられる。ここまでにどれだけ志望度を積み上げられているかが、後半で承諾につながるかどうかの山場になる。',
     label:'一次面接後の面談',
     phase:1, ch:'meet',
-    scene:'一次面接を通過し、フォローの面談。手応えはあったが少し不安そう。この2往復のどこかで、他社の内定の話が出る。',
-    opening:'一次面接、ありがとうございました。……あの、実は今日ひとつご相談したいことがあって来ました。',
+    scene:'一次面接を通過し、フォローの面談。冒頭で、他社（メガ・ホールディングス）から内定が出たことを打ち明けられる。一次面接で何を話したかは「選考記録」で確認できる。',
+    opening:'一次面接、ありがとうございました。……あの、実は、メガ・ホールディングスさんから内定をいただきまして。すごく嬉しいはずなのに、正直まだ迷っていて。ご相談したくて来ました。',
     rallies:[
-      { aim:'相談を切り出しやすい空気をつくる。急かさず、まず受け止められるか。' },
-      { aim:'「メガ・ホールディングスから内定」を聞いた上で、否定せず比較軸を一緒に整理できるか。' },
+      { aim:'他社内定を否定せず受け止め、迷って当然だと正当化できるか。急かさない。' },
+      { aim:'本人の就活の軸に沿って2社を並べ、比較の軸を一緒に整理できるか。他社批判は厳禁。' },
     ],
     model:[
-      { text:'こちらこそありがとうございました。面接で話してくれた、新人が辞めていくのを見て「自分にできることがあるはず」と思ったという話、面接官もすごく良かったと言っていました。……相談、ぜひ聞かせてください。急ぎませんし、言いにくい話でも構いません。',
-        why:'まず面接の中身を具体的に返して「見てもらえている」を作る。そのうえで「急ぎません」「言いにくい話でも」と一言添えることで、本音（＝他社内定）を出しやすくしている。ここを飛ばして自社の話を続けると、学生は言い出せないまま終わる。' },
-      { text:'メガさん、おめでとうございます。それだけ評価されたということですし、正直迷って当然だと思います。……せっかくなので、一度あの2社を並べて整理しませんか。佐藤さんの軸は「若いうちから成長できる環境」と「人の役に立つ実感」でしたよね。うちが必ず勝つとは言いません。ただ、その2つで見たときに何がどう違うかは、私がいちばん正直に説明できます。',
-        why:'他社を絶対に貶さず、まず祝う（他社批判は地雷）。「迷って当然」で迷いを正当化し、本人の軸を引用して比較のテーブルに載せる。「うちが必ず勝つとは言いません」という一歩引いた誠実さが、この学生には最も刺さる。' },
+      { text:'メガさん、おめでとうございます。まずは素直にすごいです。……迷っているのも当然だと思います。一次面接で話してくれた、新人が続けて3人辞めたのを見て「自分にできることがあるはず」と思った話、面接官もすごく良かったと言っていました。あそこまで自分の言葉で話せる人が迷わないほうが不自然なので、急がなくて大丈夫です。',
+        why:'他社を絶対に貶さず、まず祝う（他社批判は学生が最も嫌がる対応）。そのうえで「選考記録」に実在する一次面接の話を具体的に引用して「見てもらえている」を作り、「迷って当然」「急がなくて大丈夫」で迷いを正当化する。ここで自社の売り込みを始めると、学生は本音を出せないままになる。' },
+      { text:'せっかくなので、一度あの2社を並べて整理しませんか。佐藤さんの軸は「若いうちから成長できる環境」と「人の役に立つ実感」でしたよね。それと、面接で話してくれた「若手に任せてもらえる分、失敗したときに支えてもらえるのか」という不安。この3つで見たときに何がどう違うかは、私がいちばん正直に説明できます。うちが必ず勝つとは言いません。',
+        why:'ESの就活の軸と、選考記録に残っている一次面接での不安をそのまま比較の土台に載せている。どちらもプレイヤーが読める情報だけで組み立てられる。「うちが必ず勝つとは言いません」という一歩引いた誠実さが、この学生には最も刺さる。' },
     ]},
   { id:3, title:'意思決定・クロージング', sub:'終盤 — 決断の後押し',
-    intro:'最終面接を通過し、内定を提示した。しかし大手の内定を手にした佐藤さんは大きく揺れている。ここで焦って囲い込めば一瞬で終わる。最後の2往復、本人の意思で選んでもらえるか。',
+    intro:'最終面接を通過し、内定を提示した。しかし大手の内定を手にした佐藤さんは大きく揺れている。ここで焦って囲い込めば、一気に気持ちが離れる。最後の2往復、本人の意思で選んでもらえるか。',
     label:'内定提示後のクロージング面談',
     phase:3, ch:'meet',
     scene:'最終面接を通過し、内定を提示した直後の面談。大手との間で気持ちが揺れている。最大の山場。',
@@ -529,9 +601,9 @@ const STAGES = [
     ],
     model:[
       { text:'ありがとうございます。むしろ、すぐ決めないでほしいです。……差し支えなければ、何が引っかかっているか聞かせてもらえますか。条件のことでも、ご家族のことでも構いません。それを聞かないまま「うちに来てください」と言っても、たぶん佐藤さんのためになりません。',
-        why:'「すぐ決めないでほしい」と先に言うことで、オワハラの逆を取り警戒を解く。「ご家族のことでも」と具体的に例示することで、本人が言い出しにくい親の反対（非公開の本音）を開示しやすくしている。深掘りできなければ最後の一押しは絶対に決まらない。' },
+        why:'「すぐ決めないでほしい」と先に言うことで、オワハラの逆を取り警戒を解く。最終面接で親の意向に触れていたことは「選考記録」に残っているので、「ご家族のことでも」と例示するのは根拠のある一手。ここを深掘りできないと、最後の一押しは届きにくい。' },
       { text:'ご両親が大手をと言うのは、当然だと思います。心配してくださっている証拠なので。……もしよければ、ご両親向けに事業と財務の資料をお渡しします。ご希望なら私が直接ご説明にも伺います。そのうえで、3年後にどうなっていたいかだけ、もう一度考えてみてください。佐藤さんが「ここで人の可能性を広げたい」と思えないなら、メガさんに行くのが正解です。最後は佐藤さんが決めてください。',
-        why:'親の反対を否定せず肯定してから、資料・同席という具体的な解決策を出す。そのうえで期限で縛らず、「思えないならメガが正解」と言い切ることで、囲い込みではなく意思決定の尊重（最大の刺さるポイント）を示している。ここで「今日中に返事を」と言うと一発で終わる。' },
+        why:'親の反対を否定せず肯定してから、資料・同席という具体的な解決策を出す。そのうえで期限で縛らず、「思えないならメガが正解」と言い切ることで、囲い込みではなく意思決定の尊重（最大の刺さるポイント）を示している。ここで「今日中に返事を」と言うと、それまでの信頼が一気に失われる。' },
     ]},
 ];
 const curTurn = () => {
@@ -558,7 +630,7 @@ const REACT = {
   good:  { label:'手応えあり',   icon:'👍', bg:'#eef7f0', fg:'#2e7d32' },
   flat:  { label:'ふつう',       icon:'➖', bg:'#eef1f3', fg:'#5a6a72' },
   miss:  { label:'響かなかった', icon:'🌫', bg:'#fff4e5', fg:'#a86400' },
-  jirai: { label:'地雷を踏んだ', icon:'⚠️', bg:'#fdecea', fg:'#c62828' },
+  jirai: { label:'印象を損ねた', icon:'⚠️', bg:'#fdecea', fg:'#c62828' },
 };
 const KINDS = Object.keys(REACT);
 
@@ -574,24 +646,45 @@ async function saveScore(){
       body: JSON.stringify({ room:CFG.room, pid:pidFor(S.name), name:S.name,
         score:S.score, ok:S.score>=THRESHOLD }),
     });
+    if(!r.ok){
+      const d = await r.json().catch(()=>({}));
+      showSaveError(d.error || ('http_'+r.status));
+    }
     return r.ok;
-  }catch(e){ return false; }
+  }catch(e){ showSaveError('network'); return false; }
 }
+// 保存に失敗したまま黙っていると、ランキングに自分が出ない理由が分からない
+function showSaveError(code){
+  const el=document.getElementById('saveerr');
+  if(!el) return;
+  el.textContent='⚠️ 記録の保存に失敗しました：'+rankErrorText(code);
+  el.style.display='block';
+}
+// 失敗を null で握りつぶすと「ランキングが出ない」としか分からず原因を追えないので、
+// 原因コードまで返す。kv_not_configured（＝サーバー側の環境変数未設定）が最も多い。
 async function loadScores(){
   try{
     const r = await fetch('/api/rank?room='+encodeURIComponent(CFG.room));
-    if(!r.ok) return null;
-    const d = await r.json();
-    return Array.isArray(d.rows) ? d.rows : [];
-  }catch(e){ return null; }
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok) return { error: d.error || ('http_'+r.status), status:r.status };
+    return { rows: Array.isArray(d.rows) ? d.rows : [] };
+  }catch(e){ return { error:'network', status:0 }; }
 }
-async function clearScores(){
+const RANK_ERRORS = {
+  kv_not_configured:'サーバーにランキングの保存先が設定されていません。運営に連絡してください（環境変数 KV_REST_API_URL / KV_REST_API_TOKEN が未設定）。',
+  rank_failed:'ランキングの保存先に接続できませんでした。',
+  network:'通信に失敗しました。電波状況を確認して「更新」を押してください。',
+};
+const rankErrorText = e => RANK_ERRORS[e] || `ランキングを取得できませんでした（${e}）。`;
+async function clearScores(token){
   try{
-    await fetch('/api/rank', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+    const r = await fetch('/api/rank', {
+      method:'POST', headers:{'Content-Type':'application/json','x-admin-token':token||''},
       body: JSON.stringify({ room:CFG.room, action:'clear' }),
     });
-  }catch(e){}
+    const d = await r.json().catch(()=>({}));
+    return r.ok ? { ok:true } : { ok:false, error:d.error||('http_'+r.status) };
+  }catch(e){ return { ok:false, error:'network' }; }
 }
 
 /* ============================================================
@@ -623,14 +716,29 @@ function similarity(a,b){
 // ESに書かれた固有の話題。ここに触れられるかが「ESを読んだ上での対応か」の目印
 const ES_HOOKS = ['カフェ','アルバイト','バイト','新人','教育','マニュアル','離職','裁量','可能性','忙し','続け','聞く','話を聞'];
 function esTouched(msg){ const m=String(msg||''); return ES_HOOKS.some(k=>m.includes(k)); }
+// 選考記録に出てくる固有の話題。ESと同じ「読んだうえでの対応か」の目印。
+// まだ開示されていない記録の語は数えない（触れようのない情報で差がつくのを避ける）。
+const RECORD_HOOKS = [
+  { unlockStage:1, words:['研修','説明会','スケジュール','3年目'] },
+  { unlockStage:2, words:['3人辞め','つまずき','つまずい','支えても','一次面接'] },
+  { unlockStage:3, words:['後輩','相談される','ご両親','ご家族','最終面接','3年後'] },
+];
+function recordHits(msg){
+  const m=String(msg||'');
+  return RECORD_HOOKS.filter(g=>g.unlockStage<=S.stageIdx+1)
+    .reduce((n,g)=>n+g.words.filter(w=>m.includes(w)).length,0);
+}
 
-const QUALITY_CAPS = { '無言':-8, '中身がない':-6, '前と同じことの繰り返し':-5, '短すぎる':-3 };
+// 「短すぎる」は上限を -1 に留める。短くても狙いに沿った一言（「すぐ決めなくて大丈夫だよ」等）は
+// 意図が伝わっている以上マイナスにすべきではなく、それでも長文と同じ加点はさせない、という位置づけ。
+// 一方「無言」「中身がない」は据え置き。挨拶だけで承諾ラインに近づくのを止める役目はここが担う。
+const QUALITY_CAPS = { '無言':-8, '中身がない':-6, '前と同じことの繰り返し':-5, '短すぎる':-1 };
 function analyzeMessage(msg){
   const raw=String(msg||'').trim();
   if(!raw) return { flags:['無言'], cap:QUALITY_CAPS['無言'], es:false };
   const flags=[];
   if(GREETING_ONLY_RE.test(raw) || contentLength(raw)<6) flags.push('中身がない');
-  else if(raw.length<15) flags.push('短すぎる');
+  else if(raw.length<12) flags.push('短すぎる');
   const prev=S.history.map(h=>h.message).filter(m=>m && m!==TIMEOUT_MSG);
   if(prev.some(m=>similarity(m,raw)>=0.6)) flags.push('前と同じことの繰り返し');
   const cap = flags.length ? Math.min(...flags.map(f=>QUALITY_CAPS[f])) : null;
@@ -663,7 +771,7 @@ function buildPrompt(msg, action, timedOut){
   const rallyBlock = isFirst
     ? `- ラリー: 1/${TPS}（この場面の1往復目）\n  ※あなた（学生）は直前に「${st.opening}」と発言しています。プレイヤーの発言はそれへの応答です。`
     : `- ラリー: ${S.turnIdx+1}/${TPS}（この場面の${S.turnIdx+1}往復目・同じ会話の続き）\n  ※★新しい場面として仕切り直さないこと。挨拶し直したり、初対面のような反応をしてはいけません。\n  ※直前の自分の発言と地続きの、自然な会話の続きとして返すこと。\n  ※これがこの場面の最後の往復です。会話としての区切りがつく終わり方にしてください。`;
-  const timeoutBlock = timedOut ? `\n# ★重要：時間切れ（放置）\nプレイヤーは制限時間内に何も声をかけられませんでした。\n学生の側から見ると「連絡が来ないまま時間だけが過ぎた」状態です。\nこれは学生の地雷「返信の放置・遅さ」に該当します。\n放置された学生として、戸惑い・不信・気持ちの冷えを反映した反応を返し、deltaは必ずマイナス（-8〜-18程度）にしてください。\nkindは "jirai" とし、ngに「返信の放置・遅さ」を含めてください。\n` : '';
+  const timeoutBlock = timedOut ? `\n# ★重要：時間切れ（放置）\nプレイヤーは制限時間内に何も声をかけられませんでした。\n学生の側から見ると「連絡が来ないまま時間だけが過ぎた」状態です。\nこれは学生が最も嫌がる「返信の放置・遅さ」に該当します。\n放置された学生として、戸惑い・不信・気持ちの冷えを反映した反応を返し、deltaは必ずマイナス（-8〜-18程度）にしてください。\nkindは "jirai" とし、ngに「返信の放置・遅さ」を含めてください。\n` : '';
 
   const es = PERSONA.es;
   const ph = PHASES[t.phase];
@@ -676,7 +784,113 @@ function buildPrompt(msg, action, timedOut){
   const q = analyzeMessage(msg);
   const qualityBlock = (!timedOut && q.flags.length) ? `\n# ★重要：今回の発言は質に問題があります\n検出された問題: ${q.flags.join(' / ')}\n人事担当者としては手抜きの対応です。学生は「ちゃんと見てもらえていない」「テンプレ対応だ」と感じます。\n- 「理解が深まりました」「参考になりました」のような前向きな返答を絶対に返さないこと。戸惑い・素っ気なさ・当たり障りのない社交辞令にとどめること。\n- deltaは必ずマイナスにすること。kindは "miss" または "jirai" にすること。\n` : '';
 
-  return `あなたは新卒採用のコミュニケーション体験ゲームのAIエンジンです。\n下記の「学生ペルソナ」になりきって面談での発言を返し、同時に人事担当者（プレイヤー）の発言を評価します。\n\n# 学生ペルソナ\n## 公開情報（プレイヤーも見ている）\n- 氏名: ${p.name} / ${p.university} / ${p.grade}\n- 志望業界: ${p.industries}\n- 就活の軸: ${p.axis}\n## エントリーシート（説明会当日に提出済み。プレイヤーも読める）\n- 志望動機: ${es.motivation}\n- 学生時代に力を入れたこと: ${es.gakuchika}\n- 自己PR: ${es.selfPR}\n- 不安に思っていること: ${es.concern}\n## 非公開の内面（あなただけが知る。決して口に出さない）\n- 本音: ${pv.honne}\n- 刺さるポイント: ${pv.sasaru.join(' / ')}\n- 地雷（踏まれると一気に冷める）: ${pv.jirai.join(' / ')}\n- 性格: ${pv.personality}\n- 重視条件の優先度: ${pv.priority}\n\n# 企業情報\n## 自社（プレイヤーの会社）\n${c.self.name} / ${c.self.business} / ${c.self.scale} / ${c.self.treat} / 社風: ${c.self.culture} / 選考: ${c.self.flow}\n## 競合\n${c.rivals.map(r=>`${r.name}（${r.tag}）: ${r.desc}`).join('\n')}\n\n# 現在の状況\n- 選考フェーズ: ${ph.label}（${c.self.flow}）\n- Stage ${st.id}/${STAGES.length}「${st.title}」: ${st.label}\n- 場面: ${st.scene}\n${rallyBlock}\n- この往復の焦点: ${t.aim}\n${chBlock}\n- 全${TOTAL_TURNS}往復中の${S.stageIdx*TPS+S.turnIdx+1}往復目\n- 現在の志望度: ${S.score}/100（内部値。会話で数値に言及することは絶対に禁止）\n\n# これまでのやり取り（学生の第一声から始まる同じ場面の続き）\n${hist}\n\n# 今回のプレイヤーの発言\n- 発言: ${msg || '（なし）'}\n- アクション: ${action || '（発言のみ）'}\n${timeoutBlock}${qualityBlock}\n# タスク\n1. ${isLine?'LINEの返信':'対面での発言'}として、就活生らしく自然に返す（作り込みすぎない）\n   - 刺さる対応には心を開き気味に、地雷を踏まれたら素っ気なく／戸惑い気味に\n   - ★中身のない声かけに「理解が深まりました」「勉強になりました」と返してはいけない。実際に何かが伝わったときだけ前向きに反応すること\n   - 会話履歴・場面・内面と一貫させること\n2. ト書き(togaki): そのときの表情・仕草を「（〜した）」の形で1つ。会話文は入れない\n3. 評価して志望度の変動値(delta)を決める。★採点は辛口で行うこと\n   - 評価軸（重要な順）\n     a. ESの中身に具体的に踏み込めているか。カフェでの新人教育・マニュアル改訂・離職を3割減らした話・「忙しすぎて続かないのでは」という不安など、ESに書かれた固有の話題に触れず一般論で済ませた場合は加点しない\n     b. 就活の軸「${p.axis}」との整合、および本人の不安への手当て\n     c. パーソナライズ度。佐藤さん以外の誰に送っても成立する文面はテンプレとみなして減点\n     d. 場面と接触チャネルへの適切さ\n     e. NG行動（圧迫・急かし・放置・過度な囲い込み・嘘）\n   - 目安\n     素晴らしい（ESや軸に具体的に踏み込み、相手の不安に手当てできた）: +10〜+16\n     良い（具体性があり誠実。あと一歩）: +4〜+9\n     無難（間違ってはいないが誰にでも言える一般論）: -4〜0\n     薄い（短い・中身がない・同じことの繰り返し・誤字や敬語の乱れが目立つ）: -12〜-5\n     NG行動: -25〜-13\n   - ★「無難」の上限は0です。当たり障りのない対応にプラスを付けてはいけません\n   - 誤字脱字・敬語の乱れ・宛名や主語の欠落が目立つ場合は、内容が良くても2〜5点差し引くこと\n   - ※全${TOTAL_TURNS}往復で承諾ライン${THRESHOLD}点に届きうる幅は確保すること（丁寧に作り込めば+10以上を出してよい）\n4. kind: "sasaru"(刺さった) / "good"(手応えあり) / "flat"(ふつう) / "miss"(響かなかった) / "jirai"(地雷を踏んだ) のいずれか1つ\n\n# 出力\n下記JSONオブジェクトのみを出力。前後に説明文やコードブロック記法を一切付けないこと。\n{"reply":"学生の発言","togaki":"（表情や仕草）","delta":整数,"kind":"sasaru|good|flat|miss|jirai","reason":"スコアが動いた理由。結果発表のフィードバック用に簡潔に（60字程度）","inner":"この瞬間の学生の本音。結果発表で開示（1文）","ng":["該当するNG行動。無ければ空配列"]}\n\n## 出力の厳守ルール（JSONが壊れると処理できないため必ず守ること）\n- 文字列の中でダブルクォート(")を絶対に使わない。強調や引用は「」を使う\n- 文字列の中で改行しない。1行で書く\n- deltaは符号の+を付けない。マイナスのみ-を付ける（例: 8 / -12）\n- 全体を1行のJSONで出力する`;
+  // 開示済みの選考記録だけを渡す。未開示の記録を渡すと、
+  // プレイヤーが読めない話を前提に採点されてしまう（＝触れようのない情報での減点）。
+  const recordsText = openRecords().map(r =>
+    `### ${r.when}\n${r.notes.map(n=>`- ${n}`).join('\n')}\n- ${r.comment}`).join('\n');
+
+  // プレイヤーが読める情報（ES・選考記録）と読めない情報（非公開の内面）を、
+  // 見出しではっきり分けて渡す。採点でこの境界を越えさせないための土台。
+  const personaBlock = `# 学生ペルソナ
+## 公開情報（プレイヤーも見ている）
+- 氏名: ${p.name} / ${p.university} / ${p.grade}
+- 志望業界: ${p.industries}
+- 就活の軸: ${p.axis}
+## エントリーシート（説明会当日に提出済み。プレイヤーも読める）
+- 志望動機: ${es.motivation}
+- 学生時代に力を入れたこと: ${es.gakuchika}
+- 自己PR: ${es.selfPR}
+- 不安に思っていること: ${es.concern}
+## 選考記録（プレイヤーも読める。ここまでの選考で学生が実際に話した内容）
+${recordsText}
+## 非公開の内面（あなただけが知る。決して口に出さない）
+- 本音: ${pv.honne}
+- 刺さるポイント: ${pv.sasaru.join(' / ')}
+- 嫌がること（されると気持ちが離れる）: ${pv.jirai.join(' / ')}
+- 性格: ${pv.personality}
+- 重視条件の優先度: ${pv.priority}`;
+
+  const companyBlock = `# 企業情報
+## 自社（プレイヤーの会社）
+${c.self.name} / ${c.self.business} / ${c.self.scale} / ${c.self.treat} / 社風: ${c.self.culture} / 選考: ${c.self.flow}
+## 競合
+${c.rivals.map(r=>`${r.name}（${r.tag}）: ${r.desc}`).join('\n')}`;
+
+  const situationBlock = `# 現在の状況
+- 選考フェーズ: ${ph.label}（${c.self.flow}）
+- Stage ${st.id}/${STAGES.length}「${st.title}」: ${st.label}
+- 場面: ${st.scene}
+${rallyBlock}
+- この往復の焦点: ${t.aim}
+${chBlock}
+- 全${TOTAL_TURNS}往復中の${S.stageIdx*TPS+S.turnIdx+1}往復目
+- 現在の志望度: ${S.score}/100（内部値。会話で数値に言及することは絶対に禁止）`;
+
+  // 採点方針。評価するのは「この往復の焦点に沿えているか」であって、文章の長さや丁寧さではない。
+  // 以前は a.「ESの固有話題に触れなければ加点しない」を最優先に置き、さらに敬語の乱れで
+  // 2〜5点引いていたため、模範解答と同じ意図の砕けた一言がマイナスになっていた。
+  const taskBlock = `# タスク
+1. ${isLine?'LINEの返信':'対面での発言'}として、就活生らしく自然に返す（作り込みすぎない）
+   - 刺さる対応には心を開き気味に、嫌がることをされたら素っ気なく／戸惑い気味に
+   - ★中身のない声かけに「理解が深まりました」「勉強になりました」と返してはいけない。実際に何かが伝わったときだけ前向きに反応すること
+   - 会話履歴・場面・内面と一貫させること
+2. ト書き(togaki): そのときの表情・仕草を「（〜した）」の形で1つ。会話文は入れない
+3. 評価して志望度の変動値(delta)を決める
+   - ★大原則: 評価するのは「この往復の焦点に沿えているか」であって、文章の長さや丁寧さではありません。
+     意図・方向性が正しければ、短くても、砕けた言い方でも、必ずプラスを付けてください。
+   - 評価軸（重要な順）
+     a. この往復の焦点「${t.aim}」に沿えているか
+        ★焦点に沿った意図が読み取れるなら、短くても・砕けた口調でも加点すること
+     b. 学生の不安や迷いを受け止め、本人の意思決定を尊重できているか
+     c. ES・選考記録に書かれた固有の話題に踏み込めているか
+        （踏み込めていれば大きく加点する。ただし触れていないことだけを理由に減点してはいけない）
+     d. パーソナライズ度。佐藤さん以外の誰に送っても成立する文面はテンプレとみなす
+     e. 場面と接触チャネルへの適切さ
+     f. 避けたい対応（圧迫・急かし・放置・過度な囲い込み・嘘・他社批判）
+   - 目安
+     素晴らしい（焦点に沿ったうえで、ESや選考記録の具体に踏み込み、不安に手当てできた）: +10〜+16
+     良い（焦点に沿っており、意図が明確に伝わる）: +4〜+9
+     無難（焦点から外れてはいないが、誰にでも言える一般論）: -2〜+3
+     薄い（無言に近い・中身がない・前と同じことの繰り返し）: -12〜-5
+     避けたい対応: -25〜-13
+   - ★口調では減点しないこと。フランクな言い方・タメ口・砕けた表現は、この学生にはかえって親しみとして働きます。
+     誤字は意味が通らなくなる場合のみ、言い回しは学生が不快に感じるレベルの失礼さがある場合のみ減点してください。
+   - ★ただし、焦点から外れた対応・中身のない対応にプラスを付けてはいけません。
+     挨拶だけ、相槌だけ、前と同じことの繰り返しは必ずマイナスです。
+   - ※全${TOTAL_TURNS}往復で承諾ライン${THRESHOLD}点に届きうる幅は確保すること
+4. kind: "sasaru"(刺さった) / "good"(手応えあり) / "flat"(ふつう) / "miss"(響かなかった) / "jirai"(印象を損ねた) のいずれか1つ`;
+
+  // reason は結果発表と中間報告でそのまま読まれる。プレイヤーが納得できるかはここで決まるので、
+  // 「ES・選考記録のどこに触れられたか／触れられなかったか」を必ず具体で書かせる。
+  const outputBlock = `# 出力
+下記JSONオブジェクトのみを出力。前後に説明文やコードブロック記法を一切付けないこと。
+{"reply":"学生の発言","togaki":"（表情や仕草）","delta":整数,"kind":"sasaru|good|flat|miss|jirai","reason":"スコアが動いた理由（80字程度）。何が評価されたか／何が足りなかったかを、プレイヤーが次に活かせる形で書く。ES・選考記録のどの記述に触れられたか、触れられなかったかを具体的に挙げること","inner":"この瞬間の学生の本音。結果発表で開示（1文）","ng":["避けたい対応に該当するもの。無ければ空配列"]}
+
+## 出力の厳守ルール（JSONが壊れると処理できないため必ず守ること）
+- 文字列の中でダブルクォート(")を絶対に使わない。強調や引用は「」を使う
+- 文字列の中で改行しない。1行で書く
+- deltaは符号の+を付けない。マイナスのみ-を付ける（例: 8 / -12）
+- 全体を1行のJSONで出力する`;
+
+  return `あなたは新卒採用のコミュニケーション体験ゲームのAIエンジンです。
+下記の「学生ペルソナ」になりきって面談での発言を返し、同時に人事担当者（プレイヤー）の発言を評価します。
+
+${personaBlock}
+
+${companyBlock}
+
+${situationBlock}
+
+# これまでのやり取り（学生の第一声から始まる同じ場面の続き）
+${hist}
+
+# 今回のプレイヤーの発言
+- 発言: ${msg || '（なし）'}
+- アクション: ${action || '（発言のみ）'}
+${timeoutBlock}${qualityBlock}
+${taskBlock}
+
+${outputBlock}`;
 }
 
 // AI呼び出しの失敗を「利用者向けメッセージ」「再試行してよいか」「原因コード」に分けて持つ。
@@ -794,13 +1008,18 @@ function normalize(r){
     reply: String(r.reply||'…').slice(0,200),
     togaki: String(r.togaki||'（静かに話を聞いている）').slice(0,60),
     delta, kind,
-    reason: String(r.reason||'—').slice(0,140),
+    // reason はプロンプト側で80字程度を指示しているが、具体を挙げさせるぶん伸びやすい。
+    // ここで切ると語中で欠けて納得感を損ねるので、余裕を持たせる。
+    reason: String(r.reason||'—').slice(0,200),
     inner: String(r.inner||'—').slice(0,120),
     ng: Array.isArray(r.ng) ? r.ng.slice(0,3).map(x=>String(x).slice(0,40)) : [],
   };
 }
 
-const SASARU_RE = /キャリア|成長|失敗|正直|本音|あなた|一緒|意思|尊重|不安|迷|悩|寄り添|大丈夫|応援|向き合/;
+// 刺さる語。AIエンジンと違って狙い(aim)を解釈できないので、
+// 各ステージの狙い（受け止める・急かさない・本音を引き出す・意思決定を尊重する）に
+// 対応する語をここに揃えることで、短くても意図が正しい一言を拾えるようにしている。
+const SASARU_RE = /キャリア|成長|失敗|正直|本音|あなた|一緒|意思|尊重|不安|迷|悩|寄り添|大丈夫|応援|向き合|心配|親|ご家族|家族|ゆっくり|焦ら|納得|決めなくて|お任せ|素直|嬉し|おめでと/;
 const JIRAI_RE  = /圧迫|詰め|急|早く|絶対|必ず|他社.*(悪|やめ|微妙|比べ物|やば)|うち以外|嘘|盛|とりあえず来/;
 // 重複を除いた語数。1語掠めただけで満額加点されると「無難」に点が付いてしまうため
 function countHits(re, msg){
@@ -822,18 +1041,20 @@ function hitsJirai(msg){
 function offlineEngine(msg, action, si, timedOut){
   if(timedOut && !msg){
     return { reply:'…（連絡がないまま、時間が過ぎてしまった）', togaki:'（不安げに何度もスマホを確認している…）',
-      delta:-12, kind:'jirai', reason:'制限時間内に声をかけられず放置。地雷（返信の放置・遅さ）に直撃。',
+      delta:-12, kind:'jirai', reason:'制限時間内に声をかけられず放置。学生が最も嫌がる「返信の放置・遅さ」に直撃。',
       inner:'連絡、来ないな…。私、そんなに興味を持たれてないのかも。', ng:['返信の放置・遅さ'] };
   }
   const q = analyzeMessage(msg);
-  // 基準は-3。何もしなければ気持ちは少しずつ冷めていく、が既定値。
-  // 共感語を1つ掠めただけで加点されると「無難」に点が付いてしまうので、
+  // 基準は-2。何もしなければ気持ちは少しずつ冷めていく、が既定値。
+  // AI側の目安「無難: -2〜+3」と揃えてある。短くても狙いに沿った一言が
+  // 共感語ぶんの加点でプラスに乗るのが、この基準値の狙い。
   // 加点の主軸は「ESへの言及」と「具体性（文量）」に置き、共感語は薄く効かせる。
-  let delta=-3, hitJirai=false;
+  let delta=-2, hitJirai=false;
   if(['社員を紹介','オフィス見学'].includes(action)) delta+=4;  // 現場のリアルを見せる一手は重い
   else if(action==='面談を設定') delta+=3;
   delta += Math.min(3, countHits(SASARU_RE, msg));
   delta += Math.min(9, 3*ES_HOOKS.filter(k=>msg.includes(k)).length);  // ESへの言及が最大の得点源
+  delta += Math.min(6, 3*recordHits(msg));  // 選考記録への言及。終盤はESだけでは触れる材料が尽きる
   if(hitsJirai(msg)){ delta-=14; hitJirai=true; }
   if(msg.length>=100) delta+=3; else if(msg.length>=60) delta+=2; else if(msg.length>=30) delta+=1;
   if(si>=2) delta+=1;
@@ -858,7 +1079,7 @@ function offlineEngine(msg, action, si, timedOut){
   const pool=(kind==='sasaru'||kind==='good')?REPLIES[kind][si]:REPLIES[kind];
   const reply=pool[msg.length % pool.length];
   const REASON={
-    jirai:'圧迫・急かしと受け取られ、警戒された。地雷（'+PERSONA.private.jirai[0]+'）に該当。',
+    jirai:'圧迫・急かしと受け取られ、警戒された。学生が嫌がる「'+PERSONA.private.jirai[0]+'」に該当。',
     sasaru:'軸（'+PERSONA.public.axis+'）や本音に寄り添えた。刺さるポイントを突けている。',
     good:'誠実さは伝わった。あと一歩、相手の不安に踏み込めると更に良い。',
     miss:'無難だが個別性が弱く、心を動かすには届かなかった。',
@@ -871,7 +1092,7 @@ function offlineEngine(msg, action, si, timedOut){
       inner:'あんまり、ちゃんと見てもらえていない気がするな…。', ng:q.flags.slice(0,3) };
   }
   return { reply, togaki:TOGAKI[kind], delta, kind,
-    reason: REASON[kind] + (q.es?'（ESの内容に触れられている）':''),
+    reason: REASON[kind] + (q.es?'（ESの内容に触れられている）':'') + (recordHits(msg)?'（選考記録の内容に触れられている）':''),
     inner:INNER[kind], ng: hitJirai?[PERSONA.private.jirai[0]]:[] };
 }
 
@@ -906,10 +1127,29 @@ function syncViewport(){
   // アドレスバーの出入り（60〜90px程度）で誤反応しないよう、しきい値は120px。
   // PCのウィンドウ縮小をキーボードと誤認しないよう、タッチ端末に限る。
   document.body.classList.toggle('kb', IS_TOUCH && maxViewportH - h > 120);
+  // kb の付け外しで場面説明の丸め方が変わるので、ヒントの出し分けを追随させる
+  syncSceneClamp();
 }
 function scrollLogToEnd(){
   const el=document.getElementById('log');
   if(el) el.scrollTop=el.scrollHeight;
+}
+/* 場面説明は「何を書けばいいか」の手がかりなので、狭い画面でも消さずに行数だけ丸める。
+   実際に丸められているときだけ「全文表示」のヒントを出す。
+   キーボードの開閉で丸め方（2行/1行/丸めなし）が変わるので、そのたびに測り直す。 */
+function syncSceneClamp(){
+  const el=document.getElementById('scene'), more=document.getElementById('scenemore');
+  if(!el||!more) return;
+  const open = el.classList.contains('open');
+  const clamped = !open && el.scrollHeight > el.clientHeight + 1;
+  more.textContent = open ? '▴ 場面説明を閉じる' : '▾ 場面説明を全文表示';
+  more.classList.toggle('show', open || clamped);
+}
+function toggleScene(){
+  const el=document.getElementById('scene');
+  if(!el) return;
+  el.classList.toggle('open');
+  syncSceneClamp();
 }
 if(VV){
   // キーボードの開閉で高さが変わる。閉じた分だけログが隠れるので末尾へ寄せ直す。
@@ -921,7 +1161,6 @@ window.addEventListener('resize', syncViewport);
 window.addEventListener('orientationchange', ()=>{ maxViewportH=0; setTimeout(syncViewport,300); });
 syncViewport();
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const clip=(s,n)=>{const t=String(s||'');return esc(t.length>n?t.slice(0,n)+'…':t);};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
 function reset(){
@@ -940,6 +1179,8 @@ function render(){
   document.body.classList.toggle('playing', playing);
   if(!playing){ document.body.classList.remove('noscroll'); window.scrollTo(0,0); }
   syncViewport();
+  // 運営用URLではゲームに入らず、コンソールだけを出す
+  if(IS_ADMIN)                return renderAdmin();
   if(S.screen==='opening')    return renderOpening();
   if(S.screen==='briefing')   return renderBriefing();
   if(S.screen==='stageIntro') return renderStageIntro();
@@ -990,6 +1231,14 @@ function toBriefing(){
   S.screen='briefing'; render();
 }
 
+// 選考記録カード。作戦会議・ステージ導入・面談中ドロワーで同じ見た目を使い回す。
+function recordsHTML(recs){
+  return recs.map(r=>`<div class="rec">
+    <div class="rh">${r.icon} ${esc(r.when)}</div>
+    <ul>${r.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul>
+    <div class="rc">${esc(r.comment)}</div>
+  </div>`).join('');
+}
 function renderBriefing(){
   const p=PERSONA.public,c=COMPANY;
   app.innerHTML=`<div class="screen"><div class="wrap spread">
@@ -1005,7 +1254,7 @@ function renderBriefing(){
       <div class="row"><b>大学・学年</b><span>${p.university} / ${p.grade}</span></div>
       <div class="row"><b>志望業界</b><span>${p.industries}</span></div>
       <div class="row"><b>就活の軸</b><span>${p.axis}</span></div>
-      <div class="hintbox" style="margin-top:8px">⚠️ 本音・地雷・刺さるポイントは非公開。面談での<b>表情とト書き</b>から読み取ろう。</div>
+      <div class="hintbox" style="margin-top:8px">⚠️ 本音・嫌がること・刺さるポイントは非公開。面談での<b>表情とト書き</b>から読み取ろう。</div>
     </div>
     <div class="card lift">
       <div class="sect-t" style="color:#0b7a45">■ エントリーシート（提出済み）</div>
@@ -1015,7 +1264,12 @@ function renderBriefing(){
         <div class="es-q">自己PR</div><div class="es-a">${PERSONA.es.selfPR}</div>
         <div class="es-q">不安に思っていること</div><div class="es-a">${PERSONA.es.concern}</div>
       </div>
-      <div class="hintbox" style="margin-top:8px">💡 <b>ここが最大の得点源。</b>ESに書かれた具体的な話に触れずに一般論で返すと、加点されません。</div>
+      <div class="hintbox" style="margin-top:8px">💡 <b>ここが最大の得点源。</b>ESに書かれた具体的な話に触れられると、大きく加点されます。</div>
+    </div>
+    <div class="card lift">
+      <div class="sect-t" style="color:#0b7a45">■ 選考記録</div>
+      ${recordsHTML(openRecords())}
+      <div class="hintbox" style="margin-top:8px">📄 選考が進むと、面接で佐藤さんが話した内容がここに追加されます。<b>面談中も「学生情報・ES」からいつでも読み返せます。</b></div>
     </div>
     </div>
     <div class="page">
@@ -1041,7 +1295,9 @@ function renderBriefing(){
         <li>各場面は<b>学生の一言から始まる</b>。あなたはそれに返し、返ってきた反応にもう一度返す</li>
         <li>選考は <b>${PHASES.map(p=>p.label).join(' → ')}</b> と進む。今どこかは画面上部に常時表示</li>
         <li>最初の場面は<b>LINE</b>。対面と違って表情で補えないぶん、<b>文面の質がそのまま伝わる</b></li>
-        <li>採点は辛口。<b>短文・中身のない挨拶・同じことの繰り返しはマイナス</b>。無難な一般論では上がらない</li>
+        <li>評価されるのは<b>その場面で必要な一手を打てたか</b>。丁寧な言葉づかいや長さでは加点も減点もされない</li>
+        <li>ただし<b>中身のない挨拶・相槌だけ・同じことの繰り返しはマイナス</b>。無難な一般論では大きくは上がらない</li>
+        <li><b>ESと選考記録</b>に書かれた話に踏み込めると大きく加点。書かれていないことで減点されることはない</li>
         <li>制限時間 <b>${Math.floor(CFG.turnSeconds/60)}分/ラリー</b>。⏰<b>時間切れは「放置」扱いで大幅マイナス</b>（書きかけは自動送信）</li>
         <li>志望度スコアはプレイ中<b>非公開</b>（温度感のみ）。結果発表で全公開</li>
         <li>承諾ライン${THRESHOLD}点到達で内定承諾。参加者全員でランキング</li>
@@ -1061,6 +1317,9 @@ function renderStageIntro(){
   const st=STAGES[S.stageIdx];
   const mi=moodIndex(S.score), m=MOODS[mi];
   const first = S.stageIdx===0;
+  // このステージで新しく開示される選考記録。ここを読ませてから面談に入らせるのが狙いで、
+  // 面談に入ってから「何を話したか分からない」まま採点されるのを防ぐ。
+  const fresh = RECORDS.filter(r=>r.unlockStage===st.id);
   app.innerHTML=`<div class="intro screen"><div class="inner">
     <div class="num">STAGE ${st.id} / ${STAGES.length}</div>
     <div class="big">${st.id}</div>
@@ -1068,6 +1327,10 @@ function renderStageIntro(){
     <h2>${st.title}</h2>
     <div class="sub">${st.sub}　—　${st.label}（${TPS}ラリー）</div>
     <div class="brief">${st.intro}</div>
+    ${fresh.length?`<div class="recwrap">
+      <div class="rectitle">📄 ${first?'説明会での様子':'直前の選考記録'}　<span>面談前に目を通しておこう</span></div>
+      ${recordsHTML(fresh)}
+    </div>`:''}
     <div class="state">
       <div class="e">${m.em}</div>
       <div>
@@ -1076,7 +1339,7 @@ function renderStageIntro(){
       </div>
     </div>
     <div class="meta">⏱ 相談時間 ${Math.floor(CFG.turnSeconds/60)}分/ラリー　｜　⚠️ 時間切れは放置扱い</div>
-    <button class="btn-primary press" onclick="startStage()">${st.ch==='line'?'LINEを開く ▶':'面談を始める ▶'}</button>
+    <button class="btn-primary press" onclick="startStage()">${fresh.length?'読んだ — ':''}${st.ch==='line'?'LINEを開く ▶':'面談を始める ▶'}</button>
   </div></div>`;
 }
 function startStage(){
@@ -1124,7 +1387,8 @@ function renderPlay(){
       </div>
     </div>
     <div class="stage-panel">
-      <div class="scene" id="scene"></div>
+      <div class="scene" id="scene" onclick="toggleScene()"></div>
+      <button class="scene-more" id="scenemore" onclick="toggleScene()">▾ 場面説明を全文表示</button>
       <div class="seat">
         <div class="avatar" id="avatar">🧑‍🎓</div>
         <div class="who">
@@ -1167,13 +1431,16 @@ function renderPlay(){
         <div class="es-q">不安に思っていること</div><div class="es-a">${PERSONA.es.concern}</div>
       </div>
       <div class="hintbox" style="margin-top:8px">ESに書かれた具体的な話に触れられるかが、評価を大きく分ける。</div>
+      <div class="sect-t" style="color:#0b7a45">■ 選考記録</div>
+      ${recordsHTML(openRecords())}
+      <div class="hintbox" style="margin-top:8px">面接で本人が話した内容。ここに書かれていることには、いつでも触れてよい。</div>
       <div class="sect-t">■ 自社</div>
       <div class="row"><b>会社</b><span>${COMPANY.self.name}</span></div>
       <div class="row"><b>待遇</b><span>${COMPANY.self.treat}</span></div>
       <div class="row"><b>社風</b><span>${COMPANY.self.culture}</span></div>
       <div class="sect-t" style="color:#d32f2f">■ 競合</div>
       ${COMPANY.rivals.map(r=>`<div style="margin-bottom:6px;font-size:13px"><b>${r.name}</b> <span class="tag" style="background:#fce4ec;color:#c2185b">${r.tag}</span><div class="muted">${r.desc}</div></div>`).join('')}
-      <div class="hintbox" style="margin-top:10px">本音・地雷は非公開。面談の反応から推理しよう。</div>
+      <div class="hintbox" style="margin-top:10px">本音・嫌がることは非公開。面談の反応から推理しよう。</div>
     </div>
   </div>`;
   const logEl=document.getElementById('log');
@@ -1183,10 +1450,13 @@ function renderPlay(){
 }
 
 // 入力量に応じて高さを伸ばす。1行から始めて、長文でも上限まで見えるようにする。
+// 上限はCSS側に持たせる（画面の高さとキーボードの有無でメディアクエリが切り替わるため）。
+// ここで数値を持つと二重管理になり、キーボード表示中だけ噛み合わなくなる。
 function growInput(ta){
   if(!ta)return;
   ta.style.height='auto';
-  ta.style.height=Math.min(ta.scrollHeight,122)+'px';
+  const max=parseFloat(getComputedStyle(ta).maxHeight)||200;
+  ta.style.height=Math.min(ta.scrollHeight,max)+'px';
 }
 function bindInput(){
   const ta=document.getElementById('input'),cnt=document.getElementById('cnt');
@@ -1216,6 +1486,7 @@ function setTurnHeader(){
   // aim（そのラリーの狙い）はAIの採点基準として使うだけで、画面には出さない。
   // 出すと答えを教えることになり、ランキングの差がつかなくなる。
   document.getElementById('scene').textContent='📍 '+t.scene;
+  syncSceneClamp();
   document.querySelector('.m-head .stg').innerHTML=headHTML();
   document.querySelectorAll('.m-head .pipgroup').forEach((g,i)=>{
     g.querySelectorAll('.pip').forEach((p,j)=>{const gt=i*TPS+j,cur=globalTurn();
@@ -1426,6 +1697,21 @@ function logNode(m){
 }
 function clearTmp(){document.querySelectorAll('#log [data-tmp]').forEach(n=>n.remove());}
 
+/* 1ラリー分の振り返りブロック。中間報告と結果総括の両方で使う。
+   自分の発言は絶対に切り詰めない。何を書いたか思い出せないまま
+   「なぜマイナスなのか」だけ見せられるのが、いちばん納得できない体験になる。 */
+function fbBlockHTML(h){
+  const re=REACT[h.kind]||REACT.flat;
+  return `<div class="fb">
+    <div class="top"><span class="tt">${esc(h.label)}${h.timedOut?' ⏰':''}</span>
+      <span class="dl" style="color:${h.delta>0?'var(--green)':h.delta<0?'var(--red)':'var(--sub)'}">${re.icon} ${esc(re.label)}　${h.delta>0?'+':''}${h.delta}</span></div>
+    <div class="said"><span class="muted">あなた：</span>${esc(h.message)}${h.action&&h.action!=='（発言のみ）'&&!h.timedOut?`（${esc(h.action)}）`:''}</div>
+    <div class="rz">💡 ${esc(h.reason)}</div>
+    <div class="in">🗨 本音：${esc(h.inner)}</div>
+    ${h.ng&&h.ng.length?`<div class="ng">⚠️ 避けたい対応：${h.ng.map(esc).join(' / ')}</div>`:''}
+  </div>`;
+}
+
 /* 模範解答ブロック。中間報告と結果総括の両方で使う。
    自分が実際に何を書いたかを併記しないと「なるほど」で終わってしまうので、
    自分の発言（あれば）と模範解答を必ず並べて出す。 */
@@ -1439,7 +1725,7 @@ function modelAnswerHTML(st, opts){
       const mine = hs[i];
       return `<div class="mi">
         <span class="rn">ラリー${i+1}</span>
-        ${mine?`<div class="mw" style="margin:0 0 6px">あなた：「${clip(mine.message,60)}」<b style="margin-left:6px">${mine.delta>0?'+':''}${mine.delta}</b></div>`:''}
+        ${mine?`<div class="mw" style="margin:0 0 6px">あなた：「${esc(mine.message)}」<b style="margin-left:6px">${mine.delta>0?'+':''}${mine.delta}</b></div>`:''}
         <div class="mt">${esc(m.text)}</div>
         <div class="mw"><b>なぜ効くか：</b>${esc(m.why)}</div>
       </div>`;
@@ -1460,7 +1746,7 @@ function renderReport(){
   const isLast=S.stageIdx===STAGES.length-1;
   const kokoro=endMi>=3?'心を開きはじめ、前向きに検討してくれている。'
     :endMi===2?'まだ様子見。決め手を欲しがっている。':'警戒が残る。信頼の再構築が必要。';
-  app.innerHTML=`<div class="report screen"><div class="wrap" style="max-width:560px">
+  app.innerHTML=`<div class="report screen"><div class="wrap" style="max-width:760px">
     <div class="badge">中間報告 ${st.id}/${STAGES.length}</div>
     <h2 style="font-weight:900;margin:0 0 2px">${st.title}｜総括</h2>
     <p class="muted" style="margin:0 0 14px;font-size:13px">${st.sub}</p>
@@ -1472,12 +1758,17 @@ function renderReport(){
     </div>
     <div class="card">
       <div class="rep-item"><span class="ic">✅</span><div><b>よかった対応</b><br>
-        <span class="muted">「${clip(best.message,32)}」</span><br>${esc(best.reason)}</div></div>
+        <span class="muted">「${esc(best.message)}」</span><br>${esc(best.reason)}</div></div>
       ${differ?`<div class="rep-item"><span class="ic">🔧</span><div><b>もったいなかった点</b><br>
-        <span class="muted">「${clip(worst.message,32)}」</span><br>${esc(worst.reason)}</div></div>`:''}
+        <span class="muted">「${esc(worst.message)}」</span><br>${esc(worst.reason)}</div></div>`:''}
       <div class="rep-item"><span class="ic">🧠</span><div><b>学生の今の心境（読み）</b><br>${kokoro}
-        ${hadNg?'<br><span style="color:#c62828">⚠️ 地雷を踏んだ場面あり。挽回が必要。</span>':''}
+        ${hadNg?'<br><span style="color:#c62828">⚠️ 印象を損ねた場面あり。挽回の余地がある。</span>':''}
         ${hadTO?'<br><span style="color:#c62828">⏰ 時間切れによる放置が発生。信頼を大きく損ねた。</span>':''}</div></div>
+    </div>
+    <div class="card">
+      <div style="font-weight:900;font-size:14px;color:#555;margin-bottom:2px">📝 このステージでのあなたの発言（全文）</div>
+      <div class="muted" style="font-size:12px;margin-bottom:4px">次のステージに入る前に、自分が何を書いたかと、それがどう受け取られたかを振り返ろう。</div>
+      ${turns.map(fbBlockHTML).join('')}
     </div>
     <div class="card" style="padding:12px">${modelAnswerHTML(st)}</div>
     <button class="btn-primary press" onclick="${isLast?"S.screen='result';render()":'goStage('+(S.stageIdx+1)+')'}">${isLast?'結果を見る 🎉':'Stage '+(st.id+1)+' へ ▶'}</button>
@@ -1489,7 +1780,7 @@ function renderResult(){
   if(!S.saved){ S.saved=true; saveScore(); }
   app.innerHTML=`<div class="result screen">
     ${ok?confetti():''}
-    <div class="wrap" style="max-width:620px;position:relative;z-index:6">
+    <div class="wrap" style="max-width:820px;position:relative;z-index:6">
       <div class="res-hero ${ok?'ok':'ng'}">
         <div class="em">${ok?'🎉':'💔'}</div>
         <div style="font-size:24px;font-weight:900;margin-top:4px">${ok?'内定承諾！':'辞退…'}</div>
@@ -1510,17 +1801,11 @@ function renderResult(){
         ${STAGES.map(st=>{
           const hs=S.history.filter(h=>h.stageIdx===st.id-1);
           if(!hs.length)return '';
-          return `<div class="fb-stage">Stage ${st.id}｜${st.title}</div>`+hs.map(h=>`
-            <div class="fb">
-              <div class="top"><span class="tt">${h.label}${h.timedOut?' ⏰':''}</span>
-                <span class="dl" style="color:${h.delta>0?'var(--green)':h.delta<0?'var(--red)':'var(--sub)'}">${h.delta>0?'+':''}${h.delta}</span></div>
-              <div class="said"><span class="muted">あなた：</span>${esc(h.message)}${h.action&&h.action!=='（発言のみ）'&&!h.timedOut?`（${esc(h.action)}）`:''}</div>
-              <div class="rz">💡 ${esc(h.reason)}</div>
-              <div class="in">🗨 本音：${esc(h.inner)}</div>
-              ${h.ng&&h.ng.length?`<div class="ng">⚠️ NG行動：${h.ng.map(esc).join(' / ')}</div>`:''}
-            </div>`).join('')+modelAnswerHTML(st);
+          return `<div class="fb-stage">Stage ${st.id}｜${st.title}</div>`
+            + hs.map(fbBlockHTML).join('') + modelAnswerHTML(st);
         }).join('')}
       </div>
+      <div id="saveerr" class="errbox" style="display:none"></div>
       <div class="btnrow">
         <button class="btn-primary press" onclick="S.screen='ranking';render()">全体ランキングへ 🏆</button>
         <button class="btn-ghost press" onclick="reset()">やり直す</button>
@@ -1578,9 +1863,8 @@ function renderRanking(){
     <div class="tools">
       <button class="btn-primary press" style="width:auto" onclick="refreshRanking()">🔄 更新</button>
       <button class="btn-ghost press" onclick="reset()">もう一度プレイ</button>
-      <button class="btn-ghost press" style="color:#c62828" onclick="wipeRanking()">🗑 記録を全消去（運営用）</button>
     </div>
-    <p class="note">※ランキングは参加者全員で共有されています。<br>リハーサルのダミー記録は本番前に「記録を全消去」してください。</p>
+    <p class="note">※ランキングは参加者全員で共有されています。</p>
   </div></div>`;
   refreshRanking();
 }
@@ -1590,14 +1874,17 @@ async function refreshRanking(){
   if(!box) return;
   box.innerHTML=`<div class="spin">📡 参加者のスコアを取得中…</div>`;
   if(cnt) cnt.textContent='';
-  const rows = await loadScores();
+  const res = await loadScores();
 
-  if(rows===null){
-    box.innerHTML=`<div class="spin" style="color:#e6a">⚠️ 共有ランキングを利用できない環境です。自分の結果のみ表示します。</div>`
-      + rankRow({name:S.name, score:S.score, ok:S.score>=THRESHOLD}, 0, true);
+  if(res.error){
+    // 原因コードまで出す。以前は「利用できない環境です」だけで、
+    // 環境変数の未設定なのか通信の失敗なのか切り分けられなかった。
+    box.innerHTML=`<div class="spin" style="color:#e6a;line-height:1.8">⚠️ ${esc(rankErrorText(res.error))}<br>
+      <span style="font-size:11px;color:#888">（自分の結果のみ表示しています）</span></div>`
+      + (IS_ADMIN ? '' : rankRow({name:S.name, score:S.score, ok:S.score>=THRESHOLD}, 0, true));
     return;
   }
-  const done = rows.sort((a,b)=>(b.ok-a.ok)||(b.score-a.score));
+  const done = res.rows.sort((a,b)=>(b.ok-a.ok)||(b.score-a.score));
   if(cnt){
     const okCount = done.filter(r=>r.ok).length;
     cnt.textContent = done.length ? `参加 ${done.length}人　/　内定承諾 ${okCount}人` : '';
@@ -1616,10 +1903,40 @@ function rankRow(r,i,isYou){
     <div class="sc">${r.score}<div style="font-size:11px;font-weight:800;color:${r.ok?(isYou?'#c8f7d4':'var(--green)'):(isYou?'#ffcdd2':'#c62828')}">${r.ok?'✅ 承諾':'❌ 辞退'}</div></div>
   </div>`;
 }
-async function wipeRanking(){
-  if(!confirm('全参加者のランキング記録を消去します。よろしいですか？')) return;
-  await clearScores();
+/* 運営用画面（/?admin=1）。参加者の画面からは到達できない。
+   記録の消去はここでしか行えず、合言葉は /api/rank 側でも検証する。 */
+function renderAdmin(){
+  app.innerHTML=`<div class="rank screen"><div class="inner">
+    <h2 style="color:#fff;text-align:center;font-weight:900;margin:0 0 2px">🛠 運営用コンソール</h2>
+    <p style="text-align:center;color:#aaa;font-size:13px;margin:0 0 6px">ルーム: ${esc(CFG.room)}</p>
+    <div class="count" id="rcount"></div>
+    <div id="rankbody"><div class="spin">📡 参加者のスコアを取得中…</div></div>
+    <div class="admin-box">
+      <div class="ah">🗑 記録の全消去</div>
+      <p class="ap">リハーサルのダミー記録は本番前にここで消してください。<b>消すと元に戻せません。</b></p>
+      <input id="admtoken" class="admin-input" type="password" autocomplete="off" placeholder="運営の合言葉">
+      <button class="btn-ghost press" style="color:#c62828;width:100%" onclick="wipeRanking()">全参加者の記録を消去する</button>
+      <div id="admmsg" class="ap" style="margin:8px 0 0"></div>
+    </div>
+    <div class="tools">
+      <button class="btn-primary press" style="width:auto" onclick="refreshRanking()">🔄 更新</button>
+    </div>
+  </div></div>`;
   refreshRanking();
+}
+async function wipeRanking(){
+  const inp=document.getElementById('admtoken'), msg=document.getElementById('admmsg');
+  const token=inp?inp.value.trim():'';
+  if(!token){ if(msg) msg.textContent='⚠️ 合言葉を入力してください。'; return; }
+  if(!confirm('全参加者のランキング記録を消去します。元に戻せません。よろしいですか？')) return;
+  if(!confirm('本当に消去しますか？（最終確認）')) return;
+  if(msg) msg.textContent='消去中…';
+  const r = await clearScores(token);
+  if(msg) msg.textContent = r.ok ? '✅ 記録を消去しました。'
+    : (r.error==='bad_admin_token' ? '⚠️ 合言葉が違います。'
+      : r.error==='admin_token_not_configured' ? '⚠️ サーバーに合言葉（ADMIN_TOKEN / EVENT_PASS）が設定されていないため消去できません。'
+      : '⚠️ 消去に失敗しました：'+rankErrorText(r.error));
+  if(r.ok){ if(inp) inp.value=''; refreshRanking(); }
 }
 
 function syncDrawer(){

@@ -110,6 +110,17 @@ export function verifyEventPass(req, expected) {
   }
 }
 
+/**
+ * 運営用の合言葉照合。EVENT_PASS と違い「未設定なら素通し」にはしない。
+ * 記録の全消去のような取り返しのつかない操作を、設定漏れのまま通してしまわないため、
+ * expected が空なら常に false（＝拒否）を返す。比較は定数時間で行う。
+ */
+export function matchesSecret(req, header, expected) {
+  if (!expected) return false;
+  const got = headerValue(req, header);
+  return typeof got === 'string' && safeEqual(got, expected);
+}
+
 function safeEqual(a, b) {
   const bufA = Buffer.from(String(a), 'utf8');
   const bufB = Buffer.from(String(b), 'utf8');
