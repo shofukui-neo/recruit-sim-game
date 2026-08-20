@@ -308,6 +308,14 @@ svg.chart{width:100%;height:auto;display:block}
 .rrow .em{font-size:27px}
 .rrow .nm{flex:1;font-weight:900;font-size:16px;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .rrow .sc{text-align:right;font-weight:900;font-size:20px}
+/* 回答を開ける行。押せることが分かるように矢印を出し、触れた反応を付ける */
+.rrow.tappable{cursor:pointer;transition:transform .12s,box-shadow .12s}
+.rrow.tappable:active{transform:scale(.985)}
+.rrow .chev{font-size:22px;font-weight:900;color:#c3ccd2;margin-left:-4px;flex-shrink:0}
+.rrow.you .chev{color:rgba(255,255,255,.7)}
+@media (hover:hover) and (pointer:fine){
+  .rrow.tappable:hover{box-shadow:0 10px 22px rgba(0,0,0,.32)}
+}
 .rank .tools{display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap}
 .rank .tools button{font-size:13px;font-weight:800;border-radius:12px;padding:0 20px;min-height:46px;flex:1 1 150px}
 .rank .note{color:#888;font-size:11px;margin-top:14px;text-align:center;line-height:1.7}
@@ -653,8 +661,10 @@ async function saveScore(){
   try{
     const r = await fetch('/api/rank', {
       method:'POST', headers:{'Content-Type':'application/json'},
+      // 履歴も送る。ランキングから他の人の回答を開けるようにするため。
+      // サーバー側で件数・長さを切り詰めるので、ここはそのまま渡してよい。
       body: JSON.stringify({ room:CFG.room, pid:pidFor(S.name), name:S.name,
-        score:S.score, ok:S.score>=THRESHOLD }),
+        score:S.score, ok:S.score>=THRESHOLD, history:S.history }),
     });
     if(!r.ok){
       const d = await r.json().catch(()=>({}));
@@ -679,6 +689,15 @@ async function loadScores(){
     if(!r.ok) return { error: d.error || ('http_'+r.status), status:r.status, via:d.via, detail:d.detail };
     return { rows: Array.isArray(d.rows) ? d.rows : [] };
   }catch(e){ return { error:'network', status:0 }; }
+}
+// ランキングで押された1人ぶんの回答履歴。一覧とは別に取りに行く（一覧を軽く保つため）。
+async function loadPlayer(pid){
+  try{
+    const r = await fetch('/api/rank?room='+encodeURIComponent(CFG.room)+'&pid='+encodeURIComponent(pid));
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok) return { error: d.error || ('http_'+r.status), via:d.via, detail:d.detail };
+    return { player: d.detail || null };
+  }catch(e){ return { error:'network' }; }
 }
 const RANK_ERRORS = {
   kv_not_configured:'サーバーにランキングの保存先が設定されていません。運営に連絡してください（環境変数 REDIS_URL / KV_REST_API_URL のいずれも未設定）。',
@@ -1121,6 +1140,7 @@ const S = {
   log:[], history:[], action:'', input:'', busy:false, offline:false,
   pending:null, timerId:null, timeLeft:CFG.turnSeconds, timedOut:false,
   stageStartScore:PERSONA.initialScore, drawer:false, saved:false, hintOpen:false,
+  player:null,
 };
 const app=document.getElementById('app');
 const globalTurn=()=>S.stageIdx*TPS+S.turnIdx;
@@ -1197,7 +1217,7 @@ function reset(){
   clearInterval(S.timerId);
   Object.assign(S,{screen:'opening',stageIdx:0,turnIdx:0,score:PERSONA.initialScore,
     log:[],history:[],action:'',input:'',busy:false,pending:null,timedOut:false,
-    timeLeft:CFG.turnSeconds,stageStartScore:PERSONA.initialScore,drawer:false,saved:false,hintOpen:false});
+    timeLeft:CFG.turnSeconds,stageStartScore:PERSONA.initialScore,drawer:false,saved:false,hintOpen:false,player:null});
   render();
 }
 function setEngine(useAI){ CFG.useAI=useAI; S.offline=!useAI; render(); }
@@ -1209,6 +1229,8 @@ function render(){
   document.body.classList.toggle('playing', playing);
   if(!playing){ document.body.classList.remove('noscroll'); window.scrollTo(0,0); }
   syncViewport();
+  // 他プレイヤーの回答は、参加者側でも運営コンソールからでも開ける
+  if(S.screen==='player')     return renderPlayerDetail();
   // 運営用URLではゲームに入らず、コンソールだけを出す
   if(IS_ADMIN)                return renderAdmin();
   if(S.screen==='opening')    return renderOpening();
@@ -1332,6 +1354,7 @@ function renderBriefing(){
         <li>制限時間 <b>${Math.floor(CFG.turnSeconds/60)}分/ラリー</b>。⏰<b>時間切れは「放置」扱いで大幅マイナス</b>（書きかけは自動送信）</li>
         <li>志望度スコアはプレイ中<b>非公開</b>（温度感のみ）。結果発表で全公開</li>
         <li>承諾ライン${THRESHOLD}点到達で内定承諾。参加者全員でランキング</li>
+        <li>結果発表後のランキングでは、<b>他の参加者の回答と評価も見られる</b>（自分の回答も他の人に見えます）</li>
       </ul>
     </div>
     </div>
@@ -1849,8 +1872,9 @@ function renderResult(){
     </div>
   </div>`;
 }
-function lineChart(){
-  const pts=[{s:PERSONA.initialScore,d:0},...S.history.map(h=>({s:h.scoreAfter,d:h.delta}))];
+// hist を渡さなければ自分の履歴。ランキングから開いた他プレイヤーの推移にも使う。
+function lineChart(hist){
+  const pts=[{s:PERSONA.initialScore,d:0},...(hist||S.history).map(h=>({s:h.scoreAfter,d:h.delta}))];
   const W=560,H=200,padL=8,padR=8,padT=18,padB=24;
   const maxX=Math.max(1,pts.length-1);
   const x=i=>padL+(W-padL-padR)*(i/maxX);
@@ -1893,7 +1917,8 @@ function confetti(){
 function renderRanking(){
   app.innerHTML=`<div class="rank screen"><div class="inner">
     <h2 style="color:#fff;text-align:center;font-weight:900;margin:0 0 2px">🏆 最終ランキング</h2>
-    <p style="text-align:center;color:#aaa;font-size:13px;margin:0 0 6px">内定承諾者 → 志望度スコア順</p>
+    <p style="text-align:center;color:#aaa;font-size:13px;margin:0 0 2px">内定承諾者 → 志望度スコア順</p>
+    <p style="text-align:center;color:#7fd6a5;font-size:12px;font-weight:800;margin:0 0 6px">👆 名前を押すと、その人の回答と評価が見られます</p>
     <div class="count" id="rcount"></div>
     <div id="rankbody"><div class="spin">📡 参加者のスコアを取得中…</div></div>
     <div class="tools">
@@ -1932,19 +1957,86 @@ async function refreshRanking(){
 function rankRow(r,i,isYou){
   const m=MOODS[moodIndex(r.score)], win=i===0;
   const medal = i===0?'👑' : i===1?'🥈' : i===2?'🥉' : (i+1);
-  return `<div class="rrow ${isYou?'you':''}" style="animation-delay:${Math.min(i,10)*0.07}s">
+  // pid があれば回答を開ける。履歴を保存する前の記録には pid が無いので、その行は押せない。
+  const open = r.pid ? `onclick="openPlayer('${esc(r.pid)}')"` : '';
+  return `<div class="rrow ${isYou?'you':''} ${r.pid?'tappable':''}" ${open}
+      ${r.pid?'role="button" tabindex="0" aria-label="'+esc(r.name)+'の回答を見る"':''}
+      style="animation-delay:${Math.min(i,10)*0.07}s">
     <div class="pos" style="${isYou?'color:#fff':win?'color:#c9a400':''}">${medal}</div>
     <div class="em">${m.em}</div>
     <div class="nm">${esc(r.name)}${isYou?'（あなた）':''}<div style="font-size:11px;font-weight:700;opacity:.8">${m.label}</div></div>
     <div class="sc">${r.score}<div style="font-size:11px;font-weight:800;color:${r.ok?(isYou?'#c8f7d4':'var(--green)'):(isYou?'#ffcdd2':'#c62828')}">${r.ok?'✅ 承諾':'❌ 辞退'}</div></div>
+    ${r.pid?'<div class="chev">›</div>':''}
   </div>`;
+}
+
+/* ランキングから他プレイヤーの回答を開く。
+   一覧には履歴を含めていないので、押されたときに1人ぶんだけ取りに行く。 */
+function openPlayer(pid){
+  S.player={ pid, loading:true, data:null, error:null };
+  S.screen='player'; render();
+  loadPlayer(pid).then(res=>{
+    // 取得中に閉じられた／別の人を開かれた場合は捨てる
+    if(!S.player || S.player.pid!==pid || S.screen!=='player') return;
+    S.player.loading=false; S.player.data=res.player; S.player.error=res.error; S.player.res=res;
+    renderPlayerDetail();
+  });
+}
+function closePlayer(){
+  S.player=null;
+  S.screen = IS_ADMIN ? 'admin' : 'ranking';
+  render();
+}
+function renderPlayerDetail(){
+  const p=S.player||{};
+  const d=p.data;
+  const isYou = d && S.name && d.name===S.name;
+  let body;
+  if(p.loading){
+    body='<div class="spin">📡 回答を読み込み中…</div>';
+  } else if(p.error){
+    body=`<div class="spin" style="color:#e6a;line-height:1.8">⚠️ ${esc(rankErrorText(p.error,p.res))}</div>`;
+  } else if(!d || !Array.isArray(d.history) || !d.history.length){
+    body=`<div class="spin" style="line-height:1.9">この記録には回答が残っていません。<br>
+      <span style="font-size:12px;color:#888">回答を保存する前にプレイされた記録です。もう一度プレイすると記録されます。</span></div>`;
+  } else {
+    const hist=d.history;
+    body=`
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px">
+          <div style="font-weight:900;font-size:14px;color:#555;min-width:0">志望度スコアの推移</div>
+          <div style="font-size:30px;font-weight:900;color:${d.ok?'var(--green)':'#c62828'};flex-shrink:0">${d.score}<span style="font-size:13px">/100</span></div>
+        </div>
+        ${lineChart(hist)}
+      </div>
+      <div class="card">
+        <div style="font-weight:900;font-size:14px;color:#555;margin-bottom:2px">ステージ別フィードバック</div>
+        ${STAGES.map(st=>{
+          const hs=hist.filter(h=>h.stageIdx===st.id-1);
+          if(!hs.length) return '';
+          return `<div class="fb-stage">Stage ${st.id}｜${st.title}</div>` + hs.map(fbBlockHTML).join('');
+        }).join('')}
+      </div>`;
+  }
+  const name = d ? d.name : (p.name||'');
+  app.innerHTML=`<div class="result screen"><div class="wrap" style="max-width:820px">
+    <button class="btn-ghost press" style="width:auto;padding:10px 18px;margin-bottom:14px" onclick="closePlayer()">‹ ランキングに戻る</button>
+    <div class="res-hero ${d&&d.ok?'ok':'ng'}">
+      <div class="em">${d?(d.ok?'🎉':'💔'):'👤'}</div>
+      <div style="font-size:22px;font-weight:900;margin-top:4px">${esc(name)}${isYou?'（あなた）':''}</div>
+      <div style="font-size:12px;opacity:.85;margin-top:2px">${d?(d.ok?'内定承諾':'辞退'):'　'}</div>
+    </div>
+    ${body}
+    <button class="btn-primary press" onclick="closePlayer()">ランキングに戻る</button>
+  </div></div>`;
 }
 /* 運営用画面（/?admin=1）。参加者の画面からは到達できない。
    記録の消去はここでしか行えず、合言葉は /api/rank 側でも検証する。 */
 function renderAdmin(){
   app.innerHTML=`<div class="rank screen"><div class="inner">
     <h2 style="color:#fff;text-align:center;font-weight:900;margin:0 0 2px">🛠 運営用コンソール</h2>
-    <p style="text-align:center;color:#aaa;font-size:13px;margin:0 0 6px">ルーム: ${esc(CFG.room)}</p>
+    <p style="text-align:center;color:#aaa;font-size:13px;margin:0 0 2px">ルーム: ${esc(CFG.room)}</p>
+    <p style="text-align:center;color:#7fd6a5;font-size:12px;font-weight:800;margin:0 0 6px">👆 名前を押すと、その人の回答と評価が見られます</p>
     <div class="count" id="rcount"></div>
     <div id="rankbody"><div class="spin">📡 参加者のスコアを取得中…</div></div>
     <div class="admin-box">

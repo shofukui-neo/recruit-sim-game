@@ -19,6 +19,37 @@ export const config = { maxDuration: 15 };
 const CONNECT_TIMEOUT_MS = 6000;
 
 const keyFor = room => 'rank:' + String(room || 'default').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
+// 回答履歴は一覧とは別のハッシュに置く。一覧のGETは参加者全員ぶんを返すので、
+// そこに履歴まで載せると数十人規模で数百KBになり、当日の会場回線では開かなくなる。
+const detailKeyFor = room => keyFor(room) + ':d';
+const pidOf = v => String(v || '').replace(/[^a-z0-9]/g, '').slice(0, 20);
+
+const KINDS = ['sasaru', 'good', 'flat', 'miss', 'jirai'];
+const clampStr = (v, n) => String(v == null ? '' : v).slice(0, n);
+const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(Number(v) || 0)));
+
+/**
+ * 回答履歴の受け入れ。認証のないエンドポイントなので、
+ * 知らない項目は落とし、長さと件数に上限を掛けてから保存する。
+ */
+function sanitizeHistory(raw) {
+  if (!Array.isArray(raw) || !raw.length) return null;
+  return raw.slice(0, 12).map(h => ({
+    stageIdx: clampInt(h && h.stageIdx, 0, 9),
+    turnIdx: clampInt(h && h.turnIdx, 0, 9),
+    label: clampStr(h && h.label, 60),
+    message: clampStr(h && h.message, 500),
+    action: clampStr(h && h.action, 20),
+    timedOut: !!(h && h.timedOut),
+    reply: clampStr(h && h.reply, 300),
+    delta: clampInt(h && h.delta, -40, 40),
+    reason: clampStr(h && h.reason, 300),
+    inner: clampStr(h && h.inner, 200),
+    ng: Array.isArray(h && h.ng) ? h.ng.slice(0, 3).map(x => clampStr(x, 60)) : [],
+    scoreAfter: clampInt(h && h.scoreAfter, 0, 100),
+    kind: KINDS.includes(h && h.kind) ? h.kind : 'flat',
+  }));
+}
 
 /** Upstash / Vercel KV の REST API。HGETALL はフラット配列で返る。 */
 function restStore(base, token, fetchImpl) {
@@ -39,6 +70,7 @@ function restStore(base, token, fetchImpl) {
       for (let i = 0; i + 1 < flat.length; i += 2) out[flat[i]] = flat[i + 1];
       return out;
     },
+    hget: (key, field) => call(['HGET', key, field]),
     hset: (key, field, value) => call(['HSET', key, field, value]),
     del: key => call(['DEL', key]),
   };
@@ -79,6 +111,9 @@ function tcpStore(url, factory) {
     async hgetall(key) {
       return (await (await get()).hGetAll(key)) || {};
     },
+    async hget(key, field) {
+      return (await get()).hGet(key, field);
+    },
     async hset(key, field, value) {
       return (await get()).hSet(key, field, value);
     },
@@ -105,7 +140,16 @@ export function createHandler(deps = {}) {
     if (!store) return res.status(503).json({ error: 'kv_not_configured' });
     try {
       if (req.method === 'GET') {
-        const map = await store.hgetall(keyFor(req.query?.room));
+        const room = req.query?.room;
+        // pid 指定は「ランキングで押された1人ぶんの回答履歴」を取りに来ている
+        const wantPid = pidOf(req.query?.pid);
+        if (wantPid) {
+          const raw = await store.hget(detailKeyFor(room), wantPid);
+          let detail = null;
+          try { detail = raw ? JSON.parse(raw) : null; } catch (_) {}
+          return res.status(200).json({ detail, store: store.kind });
+        }
+        const map = await store.hgetall(keyFor(room));
         const rows = [];
         for (const raw of Object.values(map)) {
           try {
@@ -125,14 +169,21 @@ export function createHandler(deps = {}) {
             return res.status(403).json({ error: 'bad_admin_token' });
           }
           await store.del(key);
+          await store.del(detailKeyFor(b.room));
           return res.status(200).json({ ok: true });
         }
-        const pid = String(b.pid || '').replace(/[^a-z0-9]/g, '').slice(0, 20);
+        const pid = pidOf(b.pid);
         const name = String(b.name || '').slice(0, 12);
         const score = Math.max(0, Math.min(100, Math.round(Number(b.score) || 0)));
         if (!pid || !name) return res.status(400).json({ error: 'bad_payload' });
-        await store.hset(key, pid, JSON.stringify({ name, score, ok: !!b.ok, at: Date.now() }));
-        return res.status(200).json({ ok: true });
+        const at = Date.now();
+        // 一覧に pid を載せておく。ランキングで押された人の履歴を引くのに要る。
+        await store.hset(key, pid, JSON.stringify({ pid, name, score, ok: !!b.ok, at }));
+        const history = sanitizeHistory(b.history);
+        if (history) {
+          await store.hset(detailKeyFor(b.room), pid, JSON.stringify({ pid, name, score, ok: !!b.ok, at, history }));
+        }
+        return res.status(200).json({ ok: true, savedHistory: !!history });
       }
       return res.status(405).json({ error: 'method_not_allowed' });
     } catch (e) {

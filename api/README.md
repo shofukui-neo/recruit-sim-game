@@ -99,11 +99,22 @@ api/
 
 | メソッド | 用途 | 認証 |
 | --- | --- | --- |
-| `GET /api/rank?room=<room>` | 参加者一覧（`{ rows: [{name, score, ok, at}] }`） | なし |
-| `POST /api/rank` `{room, pid, name, score, ok}` | 自分のスコアを保存（`pid` 単位で上書き） | なし |
-| `POST /api/rank` `{room, action:'clear'}` | ルームの記録を全消去 | `x-admin-token` ヘッダ必須 |
+| `GET /api/rank?room=<room>` | 参加者一覧（`{ rows: [{pid, name, score, ok, at}] }`） | なし |
+| `GET /api/rank?room=<room>&pid=<pid>` | 1人ぶんの回答履歴（`{ detail: {..., history: [...]} }`） | なし |
+| `POST /api/rank` `{room, pid, name, score, ok, history}` | 自分のスコアと回答履歴を保存（`pid` 単位で上書き） | なし |
+| `POST /api/rank` `{room, action:'clear'}` | ルームの記録を全消去（一覧・履歴の両方） | `x-admin-token` ヘッダ必須 |
 
 消去は運営用画面 `/?admin=1` からのみ行える。参加者が見るランキング画面には消去手段を置いていない。
+
+### 回答履歴の保存先を分けている理由
+
+一覧は `rank:<room>`、回答履歴は `rank:<room>:d` と別のハッシュに置いてある。
+一覧の GET は参加者全員ぶんを返すので、そこに履歴まで載せると数十人規模で数百KBになり、
+当日の会場回線では開かなくなる。履歴はランキングで名前が押されたときに1人ぶんだけ取りに行く。
+
+`history` は認証のないエンドポイントで受けるため、**12件・1発言500文字**などの上限を掛け、
+知らない項目は捨ててから保存する（`sanitizeHistory`）。
+`history` を送らない POST も従来どおり通り、その場合は履歴を書かない。
 
 ### 保存先の2系統
 

@@ -16,6 +16,7 @@ function fakeRedis(initial = {}) {
   const calls = [];
   const client = {
     async hGetAll(key) { calls.push(['hGetAll', key]); return { ...data }; },
+    async hGet(key, field) { calls.push(['hGet', key, field]); return data[field]; },
     async hSet(key, field, value) { calls.push(['hSet', key, field, value]); data[field] = value; return 1; },
     async del(key) { calls.push(['del', key]); for (const k of Object.keys(data)) delete data[k]; return 1; },
   };
@@ -101,22 +102,22 @@ test('clear: ヘッダが無ければ 403', async () => {
   assert.equal(res.body.error, 'bad_admin_token');
 });
 
-test('clear: 合言葉が一致すれば DEL する', async () => {
+test('clear: 合言葉が一致すれば一覧と履歴の両方を DEL する', async () => {
   const { res, fetchImpl } = await invoke({
     req: clearReq({ 'x-admin-token': 'ただしい' }),
     env: { ...KV_ENV, ADMIN_TOKEN: 'ただしい' },
-    responders: [jsonResponse(200, { result: 1 })],
+    responders: [jsonResponse(200, { result: 1 }), jsonResponse(200, { result: 1 })],
   });
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.ok, true);
-  assert.deepEqual(fetchImpl.calls[0].body, ['DEL', 'rank:r1']);
+  assert.deepEqual(fetchImpl.calls.map(c => c.body), [['DEL', 'rank:r1'], ['DEL', 'rank:r1:d']]);
 });
 
 test('clear: ADMIN_TOKEN が無ければ EVENT_PASS を合言葉として使う', async () => {
   const { res } = await invoke({
     req: clearReq({ 'x-admin-token': 'event-pass' }),
     env: { ...KV_ENV, EVENT_PASS: 'event-pass' },
-    responders: [jsonResponse(200, { result: 1 })],
+    responders: [jsonResponse(200, { result: 1 }), jsonResponse(200, { result: 1 })],
   });
   assert.equal(res.statusCode, 200);
 });
@@ -239,4 +240,84 @@ test('TCP: 一度つないだ接続は使い回す（コールドスタート以
     await handler(req, createMockRes());
   }
   assert.equal(connects, 1);
+});
+
+/* ---- 回答履歴の保存と個別取得 ---- */
+
+const sampleHistory = [
+  { stageIdx: 0, turnIdx: 0, label: 'ラリー1/2', message: 'ESのカフェの話が印象に残っています', action: '（発言のみ）',
+    timedOut: false, reply: 'ありがとうございます', delta: 9, reason: 'ESに触れられている', inner: '見てくれている',
+    ng: [], scoreAfter: 64, kind: 'good' },
+];
+
+test('POST は history を別ハッシュに保存し、一覧には pid を載せる', async () => {
+  const client = fakeRedis();
+  const req = createMockReq({ method: 'POST', body: { room: 'r1', pid: 'abc123', name: '山田', score: 88, ok: true, history: sampleHistory } });
+  const { res } = await invoke({ req, env: TCP_ENV, redisFactory: async () => client });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.savedHistory, true);
+  const keys = client.calls.filter(c => c[0] === 'hSet').map(c => c[1]);
+  assert.deepEqual(keys, ['rank:r1', 'rank:r1:d'], '一覧と詳細の2ハッシュに書くこと');
+  assert.equal(JSON.parse(client.calls[0][3]).pid, 'abc123');
+  assert.equal(JSON.parse(client.calls[1][3]).history.length, 1);
+});
+
+test('history が無ければ詳細は書かない（既存の呼び出しを壊さない）', async () => {
+  const client = fakeRedis();
+  const req = createMockReq({ method: 'POST', body: { room: 'r1', pid: 'abc123', name: '山田', score: 50, ok: false } });
+  const { res } = await invoke({ req, env: TCP_ENV, redisFactory: async () => client });
+  assert.equal(res.body.savedHistory, false);
+  assert.equal(client.calls.filter(c => c[0] === 'hSet').length, 1);
+});
+
+test('GET に pid を付けるとその1人分だけ返す', async () => {
+  const client = fakeRedis({ abc123: JSON.stringify({ pid: 'abc123', name: '山田', score: 88, ok: true, history: sampleHistory }) });
+  const req = createMockReq({ method: 'GET' });
+  req.query = { room: 'r1', pid: 'abc123' };
+  const { res } = await invoke({ req, env: TCP_ENV, redisFactory: async () => client });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.detail.name, '山田');
+  assert.equal(res.body.detail.history[0].message, sampleHistory[0].message);
+  assert.deepEqual(client.calls[0], ['hGet', 'rank:r1:d', 'abc123']);
+});
+
+test('GET: 履歴の無い pid は detail:null（旧記録でも落ちない）', async () => {
+  const client = fakeRedis();
+  const req = createMockReq({ method: 'GET' });
+  req.query = { room: 'r1', pid: 'nosuch' };
+  const { res } = await invoke({ req, env: TCP_ENV, redisFactory: async () => client });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.detail, null);
+});
+
+test('history は件数と長さを切り詰め、知らない項目は捨てる', async () => {
+  const client = fakeRedis();
+  const bloated = Array.from({ length: 30 }, () => ({
+    label: 'ラ'.repeat(200), message: 'あ'.repeat(5000), reason: 'い'.repeat(5000),
+    inner: 'う'.repeat(5000), reply: 'え'.repeat(5000), ng: ['x', 'y', 'z', 'w'],
+    delta: 9999, scoreAfter: 9999, stageIdx: 99, kind: 'でたらめ', evil: '<script>',
+  }));
+  const req = createMockReq({ method: 'POST', body: { room: 'r1', pid: 'abc123', name: '山田', score: 50, history: bloated } });
+  await invoke({ req, env: TCP_ENV, redisFactory: async () => client });
+  const saved = JSON.parse(client.calls.find(c => c[1] === 'rank:r1:d')[3]).history;
+  assert.equal(saved.length, 12, '12件までに切ること');
+  assert.equal(saved[0].message.length, 500);
+  assert.equal(saved[0].label.length, 60);
+  assert.equal(saved[0].ng.length, 3);
+  assert.equal(saved[0].delta, 40);
+  assert.equal(saved[0].scoreAfter, 100);
+  assert.equal(saved[0].stageIdx, 9);
+  assert.equal(saved[0].kind, 'flat', '知らない kind は flat に倒すこと');
+  assert.equal(saved[0].evil, undefined, '知らない項目は捨てること');
+});
+
+test('clear は一覧と履歴の両方を消す', async () => {
+  const client = fakeRedis({ pid1: '{}' });
+  const { res } = await invoke({
+    req: clearReq({ 'x-admin-token': 'ただしい' }),
+    env: { ...TCP_ENV, ADMIN_TOKEN: 'ただしい' },
+    redisFactory: async () => client,
+  });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(client.calls.filter(c => c[0] === 'del').map(c => c[1]), ['rank:r1', 'rank:r1:d']);
 });
