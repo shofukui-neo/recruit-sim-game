@@ -326,6 +326,14 @@ svg.chart{width:100%;height:auto;display:block}
 .admin-input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #555;background:rgba(0,0,0,.35);
   color:#fff;font-size:15px;font-weight:700;outline:none;margin-bottom:10px}
 .admin-input:focus{border-color:#ff8a80}
+/* 合言葉欄。type="password" だとIMEが無効になって漢字変換ができないので、
+   type="text" のまま伏せ字だけCSSで掛ける。IMEは text 入力なら普通に効く。 */
+.admin-pass{display:flex;gap:8px;align-items:stretch;margin-bottom:10px}
+.admin-pass .admin-input{flex:1;margin-bottom:0;min-width:0}
+.admin-input.masked{-webkit-text-security:disc;text-security:disc}
+.admin-eye{flex-shrink:0;padding:0 14px;font-size:12px;font-weight:900;color:#ccc;
+  border:1px solid #555;border-radius:12px;background:rgba(0,0,0,.35)}
+.admin-eye:active{color:#fff}
 .rank .count{text-align:center;color:#7fd6a5;font-size:12px;font-weight:800;margin-bottom:16px}
 .spin{color:#aaa;text-align:center;padding:30px;font-size:14px}
 
@@ -1270,7 +1278,9 @@ function renderOpening(){
   const el=document.getElementById('pname');
   el.value=S.name;
   el.oninput=()=>{ S.name=el.value; el.classList.remove('err'); };
-  el.onkeydown=(e)=>{ if(e.key==='Enter') toBriefing(); };
+  // IME変換中のEnterは「変換の確定」。ここで進めると「やまだ」のまま次の画面に行ってしまう。
+  // isComposing を見ない古いAndroid向けに keyCode 229 も併せて弾く。
+  el.onkeydown=(e)=>{ if(e.key==='Enter' && !e.isComposing && e.keyCode!==229) toBriefing(); };
   // スマホで自動フォーカスすると開いた瞬間にキーボードが画面の半分を覆うので、PCのみ
   if(!S.name && !IS_TOUCH) el.focus();
 }
@@ -1524,7 +1534,9 @@ function bindInput(){
   ta.value=S.input; ta.disabled=false;
   ta.oninput=()=>{S.input=ta.value;cnt.textContent=ta.value.length;growInput(ta);};
   // PCはCtrl/⌘+Enterで送信。スマホのEnterは改行のまま（誤送信を防ぐ）。
-  ta.onkeydown=(e)=>{ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); onSend(); } };
+  ta.onkeydown=(e)=>{
+    if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&!e.isComposing&&e.keyCode!==229){ e.preventDefault(); onSend(); }
+  };
   ta.onfocus=()=>setTimeout(scrollLogToEnd,300);
   cnt.textContent=ta.value.length;
   growInput(ta);
@@ -2044,7 +2056,11 @@ function renderAdmin(){
     <div class="admin-box">
       <div class="ah">🗑 記録の全消去</div>
       <p class="ap">リハーサルのダミー記録は本番前にここで消してください。<b>消すと元に戻せません。</b></p>
-      <input id="admtoken" class="admin-input" type="password" autocomplete="off" placeholder="運営の合言葉">
+      <div class="admin-pass">
+        <input id="admtoken" class="admin-input masked" type="text" autocomplete="off"
+          autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="運営の合言葉">
+        <button type="button" class="admin-eye" id="admeye" onclick="toggleTokenMask()">表示</button>
+      </div>
       <button class="btn-ghost press" style="color:#c62828;width:100%" onclick="wipeRanking()">全参加者の記録を消去する</button>
       <div id="admmsg" class="ap" style="margin:8px 0 0"></div>
     </div>
@@ -2053,6 +2069,12 @@ function renderAdmin(){
     </div>
   </div></div>`;
   refreshRanking();
+}
+// 伏せ字の切り替え。type は text のままなので、切り替えてもIMEの状態は変わらない。
+function toggleTokenMask(){
+  const inp=document.getElementById('admtoken'), btn=document.getElementById('admeye');
+  if(!inp||!btn) return;
+  btn.textContent = inp.classList.toggle('masked') ? '表示' : '隠す';
 }
 async function wipeRanking(){
   const inp=document.getElementById('admtoken'), msg=document.getElementById('admmsg');
