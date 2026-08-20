@@ -715,7 +715,9 @@ function rankErrorText(e, res){
 async function clearScores(token){
   try{
     const r = await fetch('/api/rank', {
-      method:'POST', headers:{'Content-Type':'application/json','x-admin-token':token||''},
+      // HTTPヘッダはASCIIしか運べないため、日本語の合言葉はここでエンコードする。
+      // 素のまま入れるとブラウザの fetch がその場で例外を投げて送信すらされない。
+      method:'POST', headers:{'Content-Type':'application/json','x-admin-token':encodeURIComponent(token||'')},
       body: JSON.stringify({ room:CFG.room, action:'clear' }),
     });
     const d = await r.json().catch(()=>({}));

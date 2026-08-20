@@ -118,7 +118,21 @@ export function verifyEventPass(req, expected) {
 export function matchesSecret(req, header, expected) {
   if (!expected) return false;
   const got = headerValue(req, header);
-  return typeof got === 'string' && safeEqual(got, expected);
+  if (typeof got !== 'string') return false;
+  // HTTPヘッダはASCIIしか運べない（ブラウザの Headers は非ASCIIで例外を投げる）ので、
+  // 日本語の合言葉はフロント側でパーセントエンコードして送られてくる。ここで戻して比べる。
+  // curl などから素のASCIIで送られた場合も、デコードは実質なにもしないのでそのまま通る。
+  return safeEqual(percentDecode(got), expected);
+}
+
+/** 不正なエスケープが混じっていても例外にせず、元の文字列として扱う */
+function percentDecode(v) {
+  if (!v.includes('%')) return v;
+  try {
+    return decodeURIComponent(v);
+  } catch (_) {
+    return v;
+  }
 }
 
 function safeEqual(a, b) {

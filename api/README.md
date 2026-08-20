@@ -106,6 +106,14 @@ api/
 
 消去は運営用画面 `/?admin=1` からのみ行える。参加者が見るランキング画面には消去手段を置いていない。
 
+`x-admin-token` は HTTP ヘッダなので ASCII しか運べない（ブラウザの `Headers` は非ASCIIで例外を投げる）。
+合言葉に日本語を使えるよう、フロントは `encodeURIComponent` してから送り、サーバー側でデコードして比べる。
+curl から素の ASCII で送った場合もそのまま通る。日本語を curl で送るときはエンコードが要る:
+
+```bash
+curl -X POST "$BASE/api/rank" -H "Content-Type: application/json"   -H "x-admin-token: $(node -p 'encodeURIComponent(process.argv[1])' '山田光治')"   -d '{"room":"mochica0722","action":"clear"}'
+```
+
 ### 回答履歴の保存先を分けている理由
 
 一覧は `rank:<room>`、回答履歴は `rank:<room>:d` と別のハッシュに置いてある。

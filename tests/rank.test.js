@@ -321,3 +321,57 @@ test('clear は一覧と履歴の両方を消す', async () => {
   assert.equal(res.statusCode, 200);
   assert.deepEqual(client.calls.filter(c => c[0] === 'del').map(c => c[1]), ['rank:r1', 'rank:r1:d']);
 });
+
+/* ---- 日本語の合言葉（HTTPヘッダはASCIIしか運べないのでエンコードして送る） ---- */
+
+const JA_TOKEN = '山田光治';
+const encReq = raw => clearReq({ 'x-admin-token': raw });
+
+test('日本語の合言葉: パーセントエンコードして送れば通る', async () => {
+  const client = fakeRedis();
+  const { res } = await invoke({
+    req: encReq(encodeURIComponent(JA_TOKEN)),
+    env: { ...TCP_ENV, ADMIN_TOKEN: JA_TOKEN },
+    redisFactory: async () => client,
+  });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(client.calls.map(c => c[1]), ['rank:r1', 'rank:r1:d']);
+});
+
+test('日本語の合言葉: 別の日本語では拒否される', async () => {
+  const { res } = await invoke({
+    req: encReq(encodeURIComponent('山田太郎')),
+    env: { ...TCP_ENV, ADMIN_TOKEN: JA_TOKEN },
+    redisFactory: async () => fakeRedis(),
+  });
+  assert.equal(res.statusCode, 403);
+  assert.equal(res.body.error, 'bad_admin_token');
+});
+
+test('ASCIIの合言葉はエンコードしてもしなくても通る（curl 互換）', async () => {
+  const env = { ...TCP_ENV, ADMIN_TOKEN: 'plain-token' };
+  for (const sent of ['plain-token', encodeURIComponent('plain-token')]) {
+    const { res } = await invoke({ req: encReq(sent), env, redisFactory: async () => fakeRedis() });
+    assert.equal(res.statusCode, 200, `「${sent}」で通ること`);
+  }
+});
+
+test('% を含む壊れたエスケープでも例外にせず拒否する', async () => {
+  const { res } = await invoke({
+    req: encReq('%%%not-valid%'),
+    env: { ...TCP_ENV, ADMIN_TOKEN: JA_TOKEN },
+    redisFactory: async () => fakeRedis(),
+  });
+  assert.equal(res.statusCode, 403);
+  assert.equal(res.body.error, 'bad_admin_token');
+});
+
+test('合言葉に % が入っていても、その値自体で通る', async () => {
+  const token = 'a%b';
+  const { res } = await invoke({
+    req: encReq(encodeURIComponent(token)),
+    env: { ...TCP_ENV, ADMIN_TOKEN: token },
+    redisFactory: async () => fakeRedis(),
+  });
+  assert.equal(res.statusCode, 200);
+});
