@@ -90,7 +90,8 @@ api/
 | `GEMINI_ATTEMPT_TIMEOUT_MS` | 12000 | 1回の呼び出しの上限 |
 | `GEMINI_TOTAL_TIMEOUT_MS` | 26000 | 再試行込みの上限 |
 | `GEMINI_MAX_RETRIES` | 2 | 再試行回数 |
-| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | 未設定 | `/api/rank` の保存先（Upstash Redis / Vercel KV）。未設定だとランキングが動かない |
+| `REDIS_URL` | 未設定 | `/api/rank` の保存先（TCP）。Vercel Marketplace の「Redis」(Redis Cloud) はこれを注入する |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | 未設定 | `/api/rank` の保存先（REST）。Upstash / Vercel KV。あればこちらを優先 |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | 未設定 | 上の別名。`KV_` 系が優先される |
 | `ADMIN_TOKEN` | 未設定 | `/api/rank` の記録全消去に必要な合言葉。未設定なら `EVENT_PASS` にフォールバックし、どちらも無ければ消去は 403 |
 
@@ -104,12 +105,26 @@ api/
 
 消去は運営用画面 `/?admin=1` からのみ行える。参加者が見るランキング画面には消去手段を置いていない。
 
+### 保存先の2系統
+
+Vercel はストアの種類によって注入する環境変数が違うので、両方に対応してある。
+
+| | 環境変数 | 接続 | 必要な依存 |
+| --- | --- | --- | --- |
+| Redis Cloud（Marketplace の「Redis」） | `REDIS_URL` | `rediss://` の TCP | `redis`（package.json に記載済み） |
+| Upstash / Vercel KV | `KV_REST_API_URL` + `KV_REST_API_TOKEN` | HTTPS REST | なし（`fetch` のみ） |
+
+両方あれば REST を優先する（サーバーレスとの相性が良く、接続の維持が要らないため）。
+TCP 接続はコールドスタート時に一度だけ張り、同じインスタンスの後続リクエストで使い回す。
+接続に失敗した場合はキャッシュを捨てるので、次のリクエストで張り直される。
+
 ### セットアップ（Vercel）
 
-1. Vercel のプロジェクト → **Storage** → Upstash Redis を作成し、プロジェクトに接続する。
-   `KV_REST_API_URL` / `KV_REST_API_TOKEN` が自動で注入される。
+1. Vercel のプロジェクト → **Storage** でストアを作成し、プロジェクトに接続する。
+   上の表のいずれかの環境変数が自動で注入される。
 2. **Settings → Environment Variables** で `ADMIN_TOKEN` を設定する（運営の合言葉）。
 3. 再デプロイする。環境変数は関数のコールドスタート時に読まれるため、追加しただけでは反映されない。
+   `redis` パッケージのインストールもデプロイ時に行われる。
 
 ### ランキングが表示されないときの切り分け
 
@@ -117,9 +132,11 @@ api/
 
 | 応答 | 原因 | 対処 |
 | --- | --- | --- |
-| `503 {"error":"kv_not_configured"}` | KV の環境変数が未設定、または再デプロイしていない | 上のセットアップ手順 |
-| `500 {"error":"rank_failed"}` | KV には繋がるが REST 呼び出しが失敗 | URL / トークンの値と、Upstash 側の状態を確認 |
-| `200 {"rows":[]}` | 正常。まだ誰も結果画面に到達していないだけ | — |
+| `503 {"error":"kv_not_configured"}` | 保存先の環境変数がどれも未設定、または再デプロイしていない | 上のセットアップ手順 |
+| `500 {"error":"rank_failed","via":"tcp"}` | `REDIS_URL` に接続できない | 接続文字列と、ストア側の状態・IP制限を確認 |
+| `500 {"detail":"redis_module_missing"}` | `redis` パッケージがデプロイに含まれていない | package.json と package-lock.json を含めて再デプロイ |
+| `500 {"error":"rank_failed","via":"rest"}` | REST 呼び出しが失敗 | URL / トークンの値とストア側の状態を確認 |
+| `200 {"rows":[],"store":"tcp"}` | 正常。まだ誰も結果画面に到達していないだけ（`store` が実際に使われた経路） | — |
 
 ランキング画面には原因コードをそのまま表示するようにしてあるので、参加者の画面の文言からも切り分けられる。
 

@@ -8,19 +8,34 @@ import { createHandler } from '../api/rank.js';
 import { createFetchDouble, createMockReq, createMockRes, jsonResponse } from './helpers.js';
 
 const KV_ENV = { KV_REST_API_URL: 'https://kv.example.com', KV_REST_API_TOKEN: 'kv-token' };
+const TCP_ENV = { REDIS_URL: 'rediss://user:pass@redis.example.com:6379' };
+
+/** node-redis のクライアント風ダブル。ハッシュ1つ分をメモリに持つ。 */
+function fakeRedis(initial = {}) {
+  const data = { ...initial };
+  const calls = [];
+  const client = {
+    async hGetAll(key) { calls.push(['hGetAll', key]); return { ...data }; },
+    async hSet(key, field, value) { calls.push(['hSet', key, field, value]); data[field] = value; return 1; },
+    async del(key) { calls.push(['del', key]); for (const k of Object.keys(data)) delete data[k]; return 1; },
+  };
+  client.calls = calls;
+  client.data = data;
+  return client;
+}
 
 /** ハンドラを1回呼んで res と fetch の呼び出し記録を返す */
-async function invoke({ req, env = KV_ENV, responders = [] } = {}) {
+async function invoke({ req, env = KV_ENV, responders = [], redisFactory } = {}) {
   const res = createMockRes();
   const fetchImpl = createFetchDouble(responders);
-  await createHandler({ env, fetchImpl })(req, res);
+  await createHandler({ env, fetchImpl, redisFactory })(req, res);
   return { res, fetchImpl };
 }
 
 const clearReq = (headers = {}) =>
   createMockReq({ method: 'POST', headers, body: { room: 'r1', action: 'clear' } });
 
-test('KV が未設定なら 503 kv_not_configured を返す', async () => {
+test('REST も TCP も未設定なら 503 kv_not_configured を返す', async () => {
   const { res } = await invoke({ req: createMockReq({ method: 'GET' }), env: {} });
   assert.equal(res.statusCode, 503);
   assert.equal(res.body.error, 'kv_not_configured');
@@ -125,4 +140,103 @@ test('未対応メソッドは 405', async () => {
   const { res } = await invoke({ req: createMockReq({ method: 'DELETE' }) });
   assert.equal(res.statusCode, 405);
   assert.equal(res.body.error, 'method_not_allowed');
+});
+
+/* ---- TCP（Redis Cloud 等の REDIS_URL）経路 ---- */
+
+test('TCP: REST が無く REDIS_URL があれば TCP 経路を使う', async () => {
+  const client = fakeRedis({ pid1: JSON.stringify({ name: '田中', score: 80, ok: true }) });
+  const req = createMockReq({ method: 'GET' });
+  req.query = { room: 'r1' };
+  const { res } = await invoke({ req, env: TCP_ENV, redisFactory: async () => client });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.store, 'tcp');
+  assert.deepEqual(res.body.rows, [{ name: '田中', score: 80, ok: true }]);
+  assert.deepEqual(client.calls[0], ['hGetAll', 'rank:r1']);
+});
+
+test('TCP: REST と両方あれば REST を優先する', async () => {
+  const client = fakeRedis();
+  const req = createMockReq({ method: 'GET' });
+  req.query = { room: 'r1' };
+  const { res } = await invoke({
+    req, env: { ...KV_ENV, ...TCP_ENV },
+    responders: [jsonResponse(200, { result: [] })],
+    redisFactory: async () => client,
+  });
+  assert.equal(res.body.store, 'rest');
+  assert.equal(client.calls.length, 0);
+});
+
+test('TCP: POST で hSet され、GET で読み戻せる', async () => {
+  const client = fakeRedis();
+  const factory = async () => client;
+  const post = createMockReq({ method: 'POST', body: { room: 'r1', pid: 'abc123', name: '山田', score: 88, ok: true } });
+  const { res: postRes } = await invoke({ req: post, env: TCP_ENV, redisFactory: factory });
+  assert.equal(postRes.statusCode, 200);
+  assert.equal(JSON.parse(client.data.abc123).score, 88);
+
+  const get = createMockReq({ method: 'GET' });
+  get.query = { room: 'r1' };
+  const { res: getRes } = await invoke({ req: get, env: TCP_ENV, redisFactory: factory });
+  assert.deepEqual(getRes.body.rows.map(r => r.name), ['山田']);
+});
+
+test('TCP: clear は合言葉が一致したときだけ del する', async () => {
+  const client = fakeRedis({ pid1: JSON.stringify({ name: '田中', score: 80, ok: true }) });
+  const env = { ...TCP_ENV, ADMIN_TOKEN: 'ただしい' };
+
+  const bad = await invoke({ req: clearReq({ 'x-admin-token': 'ちがう' }), env, redisFactory: async () => client });
+  assert.equal(bad.res.statusCode, 403);
+  assert.equal(client.calls.length, 0);
+
+  const good = await invoke({ req: clearReq({ 'x-admin-token': 'ただしい' }), env, redisFactory: async () => client });
+  assert.equal(good.res.statusCode, 200);
+  assert.deepEqual(client.calls[0], ['del', 'rank:r1']);
+  assert.deepEqual(Object.keys(client.data), []);
+});
+
+test('TCP: 接続に失敗したら 500 rank_failed（via:tcp）を返す', async () => {
+  const req = createMockReq({ method: 'GET' });
+  req.query = { room: 'r1' };
+  const { res } = await invoke({
+    req, env: TCP_ENV,
+    redisFactory: async () => { throw Object.assign(new Error('connect ETIMEDOUT'), { code: 'ETIMEDOUT' }); },
+  });
+  assert.equal(res.statusCode, 500);
+  assert.equal(res.body.error, 'rank_failed');
+  assert.equal(res.body.via, 'tcp');
+});
+
+test('TCP: 接続に失敗しても次のリクエストで張り直す', async () => {
+  const client = fakeRedis();
+  let attempts = 0;
+  const factory = async () => {
+    attempts++;
+    if (attempts === 1) throw new Error('一時的な失敗');
+    return client;
+  };
+  const handler = createHandler({ env: TCP_ENV, redisFactory: factory });
+
+  const req1 = createMockReq({ method: 'GET' }); req1.query = { room: 'r1' };
+  const res1 = createMockRes();
+  await handler(req1, res1);
+  assert.equal(res1.statusCode, 500);
+
+  const req2 = createMockReq({ method: 'GET' }); req2.query = { room: 'r1' };
+  const res2 = createMockRes();
+  await handler(req2, res2);
+  assert.equal(res2.statusCode, 200, '2回目は接続が張り直されて成功すること');
+  assert.equal(attempts, 2);
+});
+
+test('TCP: 一度つないだ接続は使い回す（コールドスタート以外で再接続しない）', async () => {
+  const client = fakeRedis();
+  let connects = 0;
+  const handler = createHandler({ env: TCP_ENV, redisFactory: async () => { connects++; return client; } });
+  for (let i = 0; i < 3; i++) {
+    const req = createMockReq({ method: 'GET' }); req.query = { room: 'r1' };
+    await handler(req, createMockRes());
+  }
+  assert.equal(connects, 1);
 });

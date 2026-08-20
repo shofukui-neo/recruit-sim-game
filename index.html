@@ -164,6 +164,14 @@ textarea,input,select{font-size:16px}
    ヒントは .scene の外（兄弟要素）に置く。clamp の内側だと一緒に切り落とされてしまう。 */
 .stage-panel .scene.open{display:block!important;-webkit-line-clamp:none!important;overflow:visible!important}
 .scene-more{display:none;font-size:11px;font-weight:900;color:#7fd6a5;margin:-8px 0 10px;padding:2px 2px;text-align:left}
+/* この往復のポイント。押した人にだけ開く（常時出すと答えを配ることになる） */
+.hintrow{margin:0 0 10px}
+.hint-btn{font-size:11px;font-weight:900;color:#ffe08a;background:rgba(255,224,138,.12);border:1px solid rgba(255,224,138,.35);
+  border-radius:999px;padding:0 12px;min-height:32px;display:inline-flex;align-items:center}
+.hint-btn.on{background:rgba(255,224,138,.22)}
+.hint-body{display:none;margin-top:7px;font-size:12.5px;line-height:1.7;color:#ffeec2;
+  background:rgba(255,224,138,.10);border-left:3px solid #ffe08a;border-radius:10px;padding:8px 11px}
+.hint-body.show{display:block;animation:slideUp .3s ease}
 .scene-more.show{display:block}
 .seat{display:flex;align-items:center;gap:14px}
 .avatar{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:44px;background:rgba(255,255,255,.12);flex-shrink:0;position:relative;transition:.5s}
@@ -428,6 +436,7 @@ body.kb .temp-note,body.kb .togaki{display:none}
   /* さらにキーボードが出ると残りは300px前後しかない。
      入力欄と直前のやり取りを最優先し、参照情報は畳む。 */
   body.kb .phasebar{display:none}
+  body.kb .hintrow{display:none}
   /* ここまで狭くても場面説明は消さない。1行に丸めて残し、タップで全文に開けるようにする */
   body.kb .stage-panel .scene{-webkit-line-clamp:1;margin-bottom:6px}
   body.kb .stage-panel .tempbar{display:none}
@@ -446,6 +455,7 @@ body.kb .temp-note,body.kb .togaki{display:none}
 
 /* 横向き。高さが極端に足りないので学生パネルは名前と温度感だけに絞る */
 @media (max-height:480px){
+  .hintrow{display:none}
   .stage-panel .scene{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:6px}
   .stage-panel .avatar{width:40px;height:40px;font-size:22px}
   .togaki{display:none}
@@ -501,7 +511,7 @@ const PERSONA = {
     jirai:['圧迫感のある詰め・急かし','テンプレ丸出しの対応','返信の放置・遅さ','他社を悪く言う過度な囲い込み','その場しのぎの嘘・話を盛る'],
     personality:'慎重派・共感重視。本音は出しにくいが、信頼すると一気に開く',
     priority:'成長 ＞ 人・社風 ＞ 安定 ＞ 年収 ＞ 勤務地' },
-  initialScore:48,
+  initialScore:55,
 };
 // 選考記録。各選考フェーズで学生が実際に話した内容と、面接官の所感。
 // ES と並ぶ「プレイヤーが読める手がかり」。
@@ -614,7 +624,7 @@ const curTurn = () => {
 const TOTAL_TURNS = STAGES.length * TPS;
 // アクションは「発言だけでは届かない一手」に絞る。多いと選択が作業になり、発言の中身から意識が逸れる。
 const ACTIONS = ['社員を紹介','オフィス見学','面談を設定','（発言のみ）'];
-const THRESHOLD = 75;
+const THRESHOLD = 70;
 const TIMEOUT_MSG = '（時間切れ・何も声をかけられなかった）';
 
 const MOODS = [
@@ -666,16 +676,23 @@ async function loadScores(){
   try{
     const r = await fetch('/api/rank?room='+encodeURIComponent(CFG.room));
     const d = await r.json().catch(()=>({}));
-    if(!r.ok) return { error: d.error || ('http_'+r.status), status:r.status };
+    if(!r.ok) return { error: d.error || ('http_'+r.status), status:r.status, via:d.via, detail:d.detail };
     return { rows: Array.isArray(d.rows) ? d.rows : [] };
   }catch(e){ return { error:'network', status:0 }; }
 }
 const RANK_ERRORS = {
-  kv_not_configured:'サーバーにランキングの保存先が設定されていません。運営に連絡してください（環境変数 KV_REST_API_URL / KV_REST_API_TOKEN が未設定）。',
+  kv_not_configured:'サーバーにランキングの保存先が設定されていません。運営に連絡してください（環境変数 REDIS_URL / KV_REST_API_URL のいずれも未設定）。',
   rank_failed:'ランキングの保存先に接続できませんでした。',
+  redis_module_missing:'サーバーに redis パッケージが入っていません。再デプロイが必要です。',
   network:'通信に失敗しました。電波状況を確認して「更新」を押してください。',
 };
-const rankErrorText = e => RANK_ERRORS[e] || `ランキングを取得できませんでした（${e}）。`;
+// res には保存先の種別(via)と詳細(detail)も入る。当日の切り分けをここだけで済ませたい。
+function rankErrorText(e, res){
+  const d = res && res.detail;
+  const base = RANK_ERRORS[d] || RANK_ERRORS[e] || `ランキングを取得できませんでした（${e}）。`;
+  const via = res && res.via ? `［接続方式: ${res.via}］` : '';
+  return base + via;
+}
 async function clearScores(token){
   try{
     const r = await fetch('/api/rank', {
@@ -729,10 +746,11 @@ function recordHits(msg){
     .reduce((n,g)=>n+g.words.filter(w=>m.includes(w)).length,0);
 }
 
-// 「短すぎる」は上限を -1 に留める。短くても狙いに沿った一言（「すぐ決めなくて大丈夫だよ」等）は
+// 「短すぎる」の上限は0。短くても狙いに沿った一言（「すぐ決めなくて大丈夫だよ」等）は
 // 意図が伝わっている以上マイナスにすべきではなく、それでも長文と同じ加点はさせない、という位置づけ。
-// 一方「無言」「中身がない」は据え置き。挨拶だけで承諾ラインに近づくのを止める役目はここが担う。
-const QUALITY_CAPS = { '無言':-8, '中身がない':-6, '前と同じことの繰り返し':-5, '短すぎる':-1 };
+// 「無言」「中身がない」はマイナスのままだが、一度の手抜きで手遅れにならない幅に抑えてある。
+// 挨拶だけで承諾ラインに近づくのを止める役目はここが担う。
+const QUALITY_CAPS = { '無言':-5, '中身がない':-4, '前と同じことの繰り返し':-3, '短すぎる':0 };
 function analyzeMessage(msg){
   const raw=String(msg||'').trim();
   if(!raw) return { flags:['無言'], cap:QUALITY_CAPS['無言'], es:false };
@@ -850,9 +868,9 @@ ${chBlock}
    - 目安
      素晴らしい（焦点に沿ったうえで、ESや選考記録の具体に踏み込み、不安に手当てできた）: +10〜+16
      良い（焦点に沿っており、意図が明確に伝わる）: +4〜+9
-     無難（焦点から外れてはいないが、誰にでも言える一般論）: -2〜+3
-     薄い（無言に近い・中身がない・前と同じことの繰り返し）: -12〜-5
-     避けたい対応: -25〜-13
+     無難（焦点から外れてはいないが、誰にでも言える一般論）: 0〜+3
+     薄い（無言に近い・中身がない・前と同じことの繰り返し）: -7〜-3
+     避けたい対応: -14〜-8
    - ★口調では減点しないこと。フランクな言い方・タメ口・砕けた表現は、この学生にはかえって親しみとして働きます。
      誤字は意味が通らなくなる場合のみ、言い回しは学生が不快に感じるレベルの失礼さがある場合のみ減点してください。
    - ★ただし、焦点から外れた対応・中身のない対応にプラスを付けてはいけません。
@@ -1001,7 +1019,7 @@ function looseParse(t){
 }
 function normalize(r){
   let delta = Math.round(Number(r.delta)||0);
-  delta = Math.max(-25, Math.min(16, delta));
+  delta = Math.max(-18, Math.min(16, delta));
   const kind = KINDS.includes(r.kind) ? r.kind
     : (delta<=-13?'jirai': delta>=10?'sasaru': delta>=4?'good': delta<=-3?'miss':'flat');
   return {
@@ -1020,7 +1038,7 @@ function normalize(r){
 // 各ステージの狙い（受け止める・急かさない・本音を引き出す・意思決定を尊重する）に
 // 対応する語をここに揃えることで、短くても意図が正しい一言を拾えるようにしている。
 const SASARU_RE = /キャリア|成長|失敗|正直|本音|あなた|一緒|意思|尊重|不安|迷|悩|寄り添|大丈夫|応援|向き合|心配|親|ご家族|家族|ゆっくり|焦ら|納得|決めなくて|お任せ|素直|嬉し|おめでと/;
-const JIRAI_RE  = /圧迫|詰め|急|早く|絶対|必ず|他社.*(悪|やめ|微妙|比べ物|やば)|うち以外|嘘|盛|とりあえず来/;
+const JIRAI_RE  = /圧迫|詰めて|急か|急いで|早く決め|早く返事|早めに決め|今日中|期限|他社.*(悪|やめ|微妙|比べ物|やば)|うち以外|嘘をつ|話を盛|とりあえず来/;
 // 重複を除いた語数。1語掠めただけで満額加点されると「無難」に点が付いてしまうため
 function countHits(re, msg){
   const m = String(msg||'').match(new RegExp(re.source,'g'));
@@ -1033,7 +1051,7 @@ function hitsJirai(msg){
   let x;
   while((x = re.exec(m))){
     const after = m.slice(x.index + x[0].length, x.index + x[0].length + 14);
-    if(/(ない|ませ|ず|しないで|せずに|不要)/.test(after)) continue;
+    if(/(ない|なく|ませ|ずに|しないで|せずに|不要)/.test(after)) continue;
     return true;
   }
   return false;
@@ -1045,21 +1063,21 @@ function offlineEngine(msg, action, si, timedOut){
       inner:'連絡、来ないな…。私、そんなに興味を持たれてないのかも。', ng:['返信の放置・遅さ'] };
   }
   const q = analyzeMessage(msg);
-  // 基準は-2。何もしなければ気持ちは少しずつ冷めていく、が既定値。
-  // AI側の目安「無難: -2〜+3」と揃えてある。短くても狙いに沿った一言が
+  // 基準は-1。何もしなければ気持ちは少しずつ冷めていく、が既定値。
+  // AI側の目安「無難: 0〜+3」と揃えてある。短くても狙いに沿った一言が
   // 共感語ぶんの加点でプラスに乗るのが、この基準値の狙い。
   // 加点の主軸は「ESへの言及」と「具体性（文量）」に置き、共感語は薄く効かせる。
-  let delta=-2, hitJirai=false;
+  let delta=-1, hitJirai=false;
   if(['社員を紹介','オフィス見学'].includes(action)) delta+=4;  // 現場のリアルを見せる一手は重い
   else if(action==='面談を設定') delta+=3;
   delta += Math.min(3, countHits(SASARU_RE, msg));
   delta += Math.min(9, 3*ES_HOOKS.filter(k=>msg.includes(k)).length);  // ESへの言及が最大の得点源
   delta += Math.min(6, 3*recordHits(msg));  // 選考記録への言及。終盤はESだけでは触れる材料が尽きる
-  if(hitsJirai(msg)){ delta-=14; hitJirai=true; }
+  if(hitsJirai(msg)){ delta-=9; hitJirai=true; }
   if(msg.length>=100) delta+=3; else if(msg.length>=60) delta+=2; else if(msg.length>=30) delta+=1;
   if(si>=2) delta+=1;
   if(q.cap!=null) delta=Math.min(delta,q.cap);   // 手抜きは上限を被せる
-  delta = Math.max(-22, Math.min(16, delta));
+  delta = Math.max(-18, Math.min(16, delta));
   const kind = hitJirai?'jirai' : delta>=10?'sasaru' : delta>=4?'good' : delta<=-3?'miss' : 'flat';
   const TOGAKI={jirai:'（表情が固くなり、少し身を引いた…）',sasaru:'（目を見て、少し前のめりになった）',
     good:'（小さくうなずいた）',miss:'（曖昧に微笑んで、視線をそらした）',flat:'（静かに話を聞いている）'};
@@ -1102,7 +1120,7 @@ const S = {
   stageIdx:0, turnIdx:0, score:PERSONA.initialScore,
   log:[], history:[], action:'', input:'', busy:false, offline:false,
   pending:null, timerId:null, timeLeft:CFG.turnSeconds, timedOut:false,
-  stageStartScore:PERSONA.initialScore, drawer:false, saved:false,
+  stageStartScore:PERSONA.initialScore, drawer:false, saved:false, hintOpen:false,
 };
 const app=document.getElementById('app');
 const globalTurn=()=>S.stageIdx*TPS+S.turnIdx;
@@ -1151,6 +1169,18 @@ function toggleScene(){
   el.classList.toggle('open');
   syncSceneClamp();
 }
+/* この往復のポイント（＝AIの採点基準そのもの）。押した人にだけ開く。
+   常時出すと全員が満点の方向を知ってしまい、ランキングの差がつかなくなるため。 */
+function syncHint(){
+  const btn=document.getElementById('hintbtn'), body=document.getElementById('hintbody');
+  if(!btn||!body) return;
+  const open=!!S.hintOpen;
+  btn.textContent = open ? '💡 ポイントを閉じる' : '💡 この往復のポイントを見る';
+  btn.classList.toggle('on', open);
+  body.textContent = open ? '🎯 '+curTurn().aim : '';
+  body.classList.toggle('show', open);
+}
+function toggleHint(){ S.hintOpen=!S.hintOpen; syncHint(); }
 if(VV){
   // キーボードの開閉で高さが変わる。閉じた分だけログが隠れるので末尾へ寄せ直す。
   VV.addEventListener('resize', ()=>{ syncViewport(); scrollLogToEnd(); });
@@ -1167,7 +1197,7 @@ function reset(){
   clearInterval(S.timerId);
   Object.assign(S,{screen:'opening',stageIdx:0,turnIdx:0,score:PERSONA.initialScore,
     log:[],history:[],action:'',input:'',busy:false,pending:null,timedOut:false,
-    timeLeft:CFG.turnSeconds,stageStartScore:PERSONA.initialScore,drawer:false,saved:false});
+    timeLeft:CFG.turnSeconds,stageStartScore:PERSONA.initialScore,drawer:false,saved:false,hintOpen:false});
   render();
 }
 function setEngine(useAI){ CFG.useAI=useAI; S.offline=!useAI; render(); }
@@ -1298,6 +1328,7 @@ function renderBriefing(){
         <li>評価されるのは<b>その場面で必要な一手を打てたか</b>。丁寧な言葉づかいや長さでは加点も減点もされない</li>
         <li>ただし<b>中身のない挨拶・相槌だけ・同じことの繰り返しはマイナス</b>。無難な一般論では大きくは上がらない</li>
         <li><b>ESと選考記録</b>に書かれた話に踏み込めると大きく加点。書かれていないことで減点されることはない</li>
+        <li>迷ったら面談画面の<b>💡「この往復のポイントを見る」</b>を押すと、その場面で何を狙うべきかが読める</li>
         <li>制限時間 <b>${Math.floor(CFG.turnSeconds/60)}分/ラリー</b>。⏰<b>時間切れは「放置」扱いで大幅マイナス</b>（書きかけは自動送信）</li>
         <li>志望度スコアはプレイ中<b>非公開</b>（温度感のみ）。結果発表で全公開</li>
         <li>承諾ライン${THRESHOLD}点到達で内定承諾。参加者全員でランキング</li>
@@ -1389,6 +1420,10 @@ function renderPlay(){
     <div class="stage-panel">
       <div class="scene" id="scene" onclick="toggleScene()"></div>
       <button class="scene-more" id="scenemore" onclick="toggleScene()">▾ 場面説明を全文表示</button>
+      <div class="hintrow">
+        <button class="hint-btn press" id="hintbtn" onclick="toggleHint()">💡 この往復のポイントを見る</button>
+        <div class="hint-body" id="hintbody"></div>
+      </div>
       <div class="seat">
         <div class="avatar" id="avatar">🧑‍🎓</div>
         <div class="who">
@@ -1483,10 +1518,11 @@ function toggleAction(a){
 }
 function setTurnHeader(){
   const t=curTurn();
-  // aim（そのラリーの狙い）はAIの採点基準として使うだけで、画面には出さない。
-  // 出すと答えを教えることになり、ランキングの差がつかなくなる。
+  // aim（そのラリーの狙い）はAIの採点基準そのもの。常時出すと答えを配ることになるので、
+  // 「ヒントを見る」を押した人にだけ開く。ラリーが変わったら畳み直す。
   document.getElementById('scene').textContent='📍 '+t.scene;
   syncSceneClamp();
+  S.hintOpen=false; syncHint();
   document.querySelector('.m-head .stg').innerHTML=headHTML();
   document.querySelectorAll('.m-head .pipgroup').forEach((g,i)=>{
     g.querySelectorAll('.pip').forEach((p,j)=>{const gt=i*TPS+j,cur=globalTurn();
@@ -1879,7 +1915,7 @@ async function refreshRanking(){
   if(res.error){
     // 原因コードまで出す。以前は「利用できない環境です」だけで、
     // 環境変数の未設定なのか通信の失敗なのか切り分けられなかった。
-    box.innerHTML=`<div class="spin" style="color:#e6a;line-height:1.8">⚠️ ${esc(rankErrorText(res.error))}<br>
+    box.innerHTML=`<div class="spin" style="color:#e6a;line-height:1.8">⚠️ ${esc(rankErrorText(res.error,res))}<br>
       <span style="font-size:11px;color:#888">（自分の結果のみ表示しています）</span></div>`
       + (IS_ADMIN ? '' : rankRow({name:S.name, score:S.score, ok:S.score>=THRESHOLD}, 0, true));
     return;
